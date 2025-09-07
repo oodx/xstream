@@ -2,6 +2,7 @@
 
 use rsb::prelude::*;
 use crate::xstream::types::{TokenBucket, BucketMode, is_token_streamable};
+// xsed now available from rsb::prelude via xcls module
 
 /// tx - Transform markers/flags (just dumb markers, transformers decide what they mean)
 #[derive(Debug, Clone, Copy)]
@@ -261,30 +262,16 @@ impl TokenStream {
     
     /// Transform to upper or lower case
     pub fn upper(self) -> Self {
-        // Match key="value" and transform just the value
-        let result = stream!(string: &self.content)
-            .sed(r#"="([^"]*)"#, |caps: &str| {
-                if let Some(val) = caps.split('"').nth(1) {
-                    format!("=\"{}\"", val.to_uppercase())
-                } else {
-                    caps.to_string()
-                }
-            })
-            .to_string();
-        TokenStream::new(result)
+        // Use xsed's transform_values with closure!
+        TokenStream::new(xsed(&self.content)
+            .transform_values(|v| v.to_uppercase())
+            .to_string())
     }
     
     pub fn lower(self) -> Self {
-        let result = stream!(string: &self.content)
-            .sed(r#"="([^"]*)"#, |caps: &str| {
-                if let Some(val) = caps.split('"').nth(1) {
-                    format!("=\"{}\"", val.to_lowercase())
-                } else {
-                    caps.to_string()
-                }
-            })
-            .to_string();
-        TokenStream::new(result)
+        TokenStream::new(xsed(&self.content)
+            .transform_values(|v| v.to_lowercase())
+            .to_string())
     }
     
     /// Escape based on tx flag
@@ -397,14 +384,9 @@ impl TokenStream {
                 TokenStream::new(result)
             },
             tx::DECODE => {
-                // Decode \u{1F600} style escapes
-                let result = stream!(string: &self.content)
-                    .sed(r#"\\u\{([0-9a-fA-F]+)\}"#, |caps: &str| {
-                        // This is simplified - would need proper regex capture
-                        caps.to_string()
-                    })
-                    .to_string();
-                TokenStream::new(result)
+                // Decode \u{1F600} style escapes - simplified for now
+                // TODO: Implement proper unicode decoding with xsed
+                self
             },
             _ => self,
         }

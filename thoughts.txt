@@ -1,0 +1,12 @@
+
+
+
+
+  //simple transform
+   s = fountain(data).transform(options).sink(type);
+
+  //throw error as detection type lol
+   s = fountain(data).detect(options).sink(type);
+
+  //simple filter
+   s = fountain(data).filter(options).sink(type);

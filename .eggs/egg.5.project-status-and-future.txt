@@ -48,7 +48,7 @@ Target: Current status and future direction of XStream within the broader OODX e
 ┌─────────────────────────────────────┐
 │ OODX Applications                   │
 ├─────────────────────────────────────┤
-│ Syntax | Paintbox | Jynx | Boxy    │ ← Domain-specific tools
+│ Syntax | Paintbox | Jynx | Boxy     │ ← Domain-specific tools
 ├─────────────────────────────────────┤  
 │ XStream                             │ ← Token processing layer
 ├─────────────────────────────────────┤

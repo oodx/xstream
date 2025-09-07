@@ -3,4 +3,12 @@ name = "xstream"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]]
+name = "xstream-driver"
+path = "src/driver.rs"
+
 [dependencies]
+# RSB framework with re-exported dependencies
+rsb = { git = "https://github.com/oodx/rebel", branch = "main" }
+base64 = "0.22"
+urlencoding = "2.1"

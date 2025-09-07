@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use super::{namespace::Namespace, token::Token};
+use super::{namespace::Namespace, token::{Token, TokenStreamable}, error::{TokenBucketError, TokenBucketResult}};
 
 #[derive(Debug, Clone)]
 pub enum BucketMode {
@@ -25,6 +25,25 @@ impl TokenBucket {
                 _ => Some(HashMap::new()),
             }
         }
+    }
+    
+    pub fn from_tokens(tokens: &[Token], mode: BucketMode) -> Self {
+        collect_tokens(tokens, mode)
+    }
+    
+    pub fn from_str(input: &str, mode: BucketMode) -> TokenBucketResult<Self> {
+        if input.trim().is_empty() {
+            return Err(TokenBucketError::EmptyInput);
+        }
+        
+        let tokens = input.tokenize()
+            .map_err(|e| TokenBucketError::ParseError(e))?;
+            
+        if tokens.is_empty() {
+            return Err(TokenBucketError::ParseError("No valid tokens found in input".to_string()));
+        }
+        
+        Ok(Self::from_tokens(&tokens, mode))
     }
     
     pub fn insert(&mut self, namespace: &Namespace, key: String, value: String) {

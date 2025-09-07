@@ -1,4 +1,6 @@
 pub mod xstream;
 
-// Re-export main types for convenience
-pub use xstream::types::{Namespace, Token, TokenStreamable, TokenBucket, BucketMode, collect_tokens};
+// Re-export everything from xstream submodules
+pub use xstream::types::*;
+pub use xstream::gen::*;
+pub use xstream::transform::{TokenStream, transform, tx};

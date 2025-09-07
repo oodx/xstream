@@ -43,37 +43,103 @@ pub trait TokenStreamable {
     fn validate(&self) -> Result<(), String>;
 }
 
-impl TokenStreamable for str {
-    fn tokenize(&self) -> Result<Vec<Token>, String> {
-        let mut tokens = Vec::new();
+fn strip_quotes(s: &str) -> String {
+    let s = s.trim();
+    if s.len() >= 2 {
+        if (s.starts_with('"') && s.ends_with('"')) || 
+           (s.starts_with('\'') && s.ends_with('\'')) {
+            s[1..s.len()-1].to_string()
+        } else {
+            s.to_string()
+        }
+    } else {
+        s.to_string()
+    }
+}
+
+// Standalone tokenization function that can be reused
+pub fn tokenize_string(input: &str) -> Result<Vec<Token>, String> {
+    let mut tokens = Vec::new();
+    
+    for token_str in input.split(';') {
+        // Only trim leading spaces (allow space after ;) but not trailing spaces (no space before ;)
+        let token_str = token_str.trim_start();
+        if token_str.is_empty() { continue; }
         
-        for token_str in self.split(';') {
-            let token_str = token_str.trim();
-            if token_str.is_empty() { continue; }
-            
-            // Split on first '='
-            let (key_part, value) = match token_str.split_once('=') {
-                Some((k, v)) => (k, v.to_string()),
-                None => continue,
-            };
-            
-            // Check for namespace separator ':'
-            let (namespace, key) = match key_part.split_once(':') {
-                Some((ns, k)) => {
-                    // Parse namespace with its internal delimiter
-                    let namespace = Namespace::from_string(ns);
-                    (Some(namespace), k.to_string())
-                },
-                None => (None, key_part.to_string()),
-            };
-            
-            tokens.push(Token { namespace, key, value });
+        // Check for trailing spaces (space before ;)
+        if token_str != token_str.trim_end() {
+            return Err(format!("Malformed token '{}': trailing spaces not allowed", token_str.trim_end()));
         }
         
-        Ok(tokens)
+        // Split on first '='
+        let (key_part, value_part) = match token_str.split_once('=') {
+            Some((k, v)) => (k, v),
+            None => {
+                // More specific error for malformed tokens
+                if !token_str.trim().is_empty() {
+                    return Err(format!("Malformed token '{}': missing '=' separator", token_str));
+                }
+                continue;
+            },
+        };
+        
+        // Check for spaces around '=' - key should not have trailing spaces, value should not have leading spaces
+        if key_part != key_part.trim_end() {
+            return Err(format!("Malformed token '{}': space before '=' not allowed", token_str));
+        }
+        if value_part != value_part.trim_start() {
+            return Err(format!("Malformed token '{}': space after '=' not allowed", token_str));
+        }
+        
+        let key_part = key_part.trim(); // Allow leading spaces in key for consistency
+        let value = strip_quotes(value_part);
+        
+        // Check for empty key
+        if key_part.is_empty() {
+            return Err(format!("Malformed token '{}': empty key", token_str));
+        }
+        
+        // Check for namespace separator ':'
+        let (namespace, key) = match key_part.split_once(':') {
+            Some((ns, k)) => {
+                // Validate namespace - no spaces allowed
+                if ns.contains(' ') {
+                    return Err(format!("Malformed token '{}': spaces not allowed in namespace '{}'", token_str, ns));
+                }
+                // Validate key part - no spaces allowed
+                if k.contains(' ') {
+                    return Err(format!("Malformed token '{}': spaces not allowed in key '{}'", token_str, k));
+                }
+                // Parse namespace with its internal delimiter
+                let namespace = Namespace::from_string(ns);
+                (Some(namespace), k.to_string())
+            },
+            None => {
+                // Even non-prefixed keys shouldn't have spaces
+                if key_part.contains(' ') {
+                    return Err(format!("Malformed token '{}': spaces not allowed in key '{}'", token_str, key_part));
+                }
+                (None, key_part.to_string())
+            },
+        };
+        
+        tokens.push(Token { namespace, key, value });
+    }
+    
+    Ok(tokens)
+}
+
+// Helper function to validate if a string can be tokenized
+pub fn is_token_streamable(input: &str) -> bool {
+    tokenize_string(input).is_ok()
+}
+
+impl TokenStreamable for str {
+    fn tokenize(&self) -> Result<Vec<Token>, String> {
+        tokenize_string(self)
     }
     
     fn validate(&self) -> Result<(), String> {
-        self.tokenize().map(|_| ())
+        tokenize_string(self).map(|_| ())
     }
 }

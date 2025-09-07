@@ -2,12 +2,20 @@ pub mod namespace;
 pub mod token;
 pub mod bucket;
 pub mod error;
+pub mod streamable;
 
 // Re-export public types
 pub use namespace::Namespace;
 pub use token::{Token, TokenStreamable, tokenize_string, is_token_streamable};
 pub use bucket::{TokenBucket, BucketMode, collect_tokens};
 pub use error::{TokenBucketError, TokenBucketResult};
+
+// Re-export token-specific streamables
+pub use streamable::{
+    TokenCount, ExtractKeys, ExtractValues, FilterTokens,
+    ExtractNamespaces, FilterByNamespace, TokenValidate,
+    TokenToLines, LinesToTokens,
+};
 
 #[cfg(test)]
 mod tests {

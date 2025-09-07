@@ -8,19 +8,24 @@
 // - Direct struct-based pipelines  
 // - Extending with custom streamable functions
 
-// Re-export all RSB streamable functionality
+// Re-export RSB streamable functionality (unix-style, encoding, etc.)
 pub use rsb::streamable::{
     Streamable, StreamApply,
     // Basic text transforms
     Replace, UpperCase, LowerCase, Reverse, Trim,
     // Unix-style streamables
     Head, Tail, Grep, Sort, Unique, WordCount,
-    // Token-specific streamables  
-    TokenCount, ExtractKeys, ExtractValues, FilterTokens,
     // Encoding transforms  
     Base64Encode, Base64Decode, UrlEncode, UrlDecode,
     // RSB integration streamables
     Sed, SedLines,
+};
+
+// Re-export xstream's token-specific streamables
+pub use crate::xstream::types::{
+    TokenCount, ExtractKeys, ExtractValues, FilterTokens,
+    ExtractNamespaces, FilterByNamespace, TokenValidate,
+    TokenToLines, LinesToTokens,
 };
 
 // Re-export the streamable! macro from RSB

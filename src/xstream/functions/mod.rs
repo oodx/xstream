@@ -39,6 +39,9 @@ pub fn url_decode_fn(input: &str, _: ()) -> String {
     UrlDecode::stream_apply(input, ())
 }
 
+// === TOKEN-SPECIFIC FUNCTIONS ===
+use crate::xstream::types::*;
+
 /// Count tokens in the stream
 pub fn token_count_fn(input: &str, _: ()) -> String {
     TokenCount::stream_apply(input, ())
@@ -57,4 +60,19 @@ pub fn extract_values_fn(input: &str, _: ()) -> String {
 /// Filter tokens based on a pattern
 pub fn filter_tokens_fn(input: &str, pattern: String) -> String {
     FilterTokens::stream_apply(input, pattern)
+}
+
+/// Extract all namespaces from token stream
+pub fn extract_namespaces_fn(input: &str, _: ()) -> String {
+    ExtractNamespaces::stream_apply(input, ())
+}
+
+/// Filter tokens by namespace
+pub fn filter_by_namespace_fn(input: &str, namespace: String) -> String {
+    FilterByNamespace::stream_apply(input, namespace)
+}
+
+/// Validate token stream format
+pub fn validate_tokens_fn(input: &str, _: ()) -> String {
+    TokenValidate::stream_apply(input, ())
 }

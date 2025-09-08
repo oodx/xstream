@@ -4,9 +4,9 @@ use rsb::prelude::*;
 use crate::xstream::types::{TokenBucket, BucketMode, is_token_streamable};
 // xsed now available from rsb::prelude via xcls module
 
-/// tx - Transform markers/flags (just dumb markers, transformers decide what they mean)
+/// TX - Transform markers/flags (just dumb markers, transformers decide what they mean)
 #[derive(Debug, Clone, Copy)]
-pub enum tx {
+pub enum TX {
     // Operations
     ENCODE,
     DECODE,
@@ -274,19 +274,19 @@ impl TokenStream {
             .to_string())
     }
     
-    /// Escape based on tx flag
-    pub fn esc(self, what: tx) -> Self {
+    /// Escape based on TX flag
+    pub fn esc(self, what: TX) -> Self {
         match what {
-            tx::QUOTES => {
+            TX::QUOTES => {
                 self.translate("\"", "\\\"")
             },
-            tx::HTML => {
+            TX::HTML => {
                 self.translate("&", "&amp;")
                     .translate("<", "&lt;")
                     .translate(">", "&gt;")
                     .translate("\"", "&quot;")
             },
-            tx::ALL => {
+            TX::ALL => {
                 self.translate("\\", "\\\\")
                     .translate("\"", "\\\"")
                     .translate("\n", "\\n")
@@ -298,18 +298,18 @@ impl TokenStream {
     }
     
     /// Unescape based on tx flag
-    pub fn unesc(self, what: tx) -> Self {
+    pub fn unesc(self, what: TX) -> Self {
         match what {
-            tx::QUOTES => {
+            TX::QUOTES => {
                 self.translate("\\\"", "\"")
             },
-            tx::HTML => {
+            TX::HTML => {
                 self.translate("&quot;", "\"")
                     .translate("&lt;", "<")
                     .translate("&gt;", ">")
                     .translate("&amp;", "&")
             },
-            tx::ALL => {
+            TX::ALL => {
                 self.translate("\\n", "\n")
                     .translate("\\r", "\r")
                     .translate("\\t", "\t")
@@ -321,17 +321,17 @@ impl TokenStream {
     }
     
     /// Base64 encode/decode
-    pub fn base64(self, op: tx) -> Self {
+    pub fn base64(self, op: TX) -> Self {
         use base64::{Engine as _, engine::general_purpose};
         
         match op {
-            tx::ENCODE => {
+            TX::ENCODE => {
                 let result = self.transform_values_with(|v| {
                     general_purpose::STANDARD.encode(v.as_bytes())
                 });
                 TokenStream::new(result)
             },
-            tx::DECODE => {
+            TX::DECODE => {
                 let result = self.transform_values_with(|v| {
                     general_purpose::STANDARD
                         .decode(v)
@@ -346,15 +346,15 @@ impl TokenStream {
     }
     
     /// URL encode/decode
-    pub fn url(self, op: tx) -> Self {
+    pub fn url(self, op: TX) -> Self {
         match op {
-            tx::ENCODE => {
+            TX::ENCODE => {
                 let result = self.transform_values_with(|v| {
                     urlencoding::encode(v).to_string()
                 });
                 TokenStream::new(result)
             },
-            tx::DECODE => {
+            TX::DECODE => {
                 let result = self.transform_values_with(|v| {
                     urlencoding::decode(v)
                         .map(|s| s.to_string())
@@ -367,9 +367,9 @@ impl TokenStream {
     }
     
     /// Unicode encode/decode
-    pub fn unicode(self, op: tx) -> Self {
+    pub fn unicode(self, op: TX) -> Self {
         match op {
-            tx::ENCODE => {
+            TX::ENCODE => {
                 let result = self.transform_values_with(|v| {
                     v.chars()
                         .map(|c| {
@@ -383,7 +383,7 @@ impl TokenStream {
                 });
                 TokenStream::new(result)
             },
-            tx::DECODE => {
+            TX::DECODE => {
                 // Decode \u{1F600} style escapes - simplified for now
                 // TODO: Implement proper unicode decoding with xsed
                 self

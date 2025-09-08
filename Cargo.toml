@@ -1,6 +1,6 @@
 [package]
 name = "xstream"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 
 [[bin]]
@@ -12,3 +12,4 @@ path = "src/driver.rs"
 rsb = { git = "https://github.com/oodx/rebel", branch = "main" }
 base64 = "0.22"
 urlencoding = "2.1"
+regex = "1.10"

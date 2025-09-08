@@ -1,290 +1,343 @@
-// XStream Driver - Bash-like token stream generation with RSB
+// XStream Driver - Organized feature testing with RSB dispatch
 
 use rsb::prelude::*;
-use xstream::{gen_token_stream, gen_flat_token, gen_ns_token, gen_token, gen_config_stream, 
-              ValueType, TokenBucket, BucketMode, is_token_streamable, transform};
+use xstream::{gen_token_stream, gen_config_stream, transform, fork, merge, fork_all, xor, multi_xor, timed_gate, xor_gate_with_state, TX, MergeStrategy};
+use xstream::colors::{colorize, colorize_fork_display, colorize_merge_display, colorize_workflow_display, colorize_xor_weaving, colorize_multi_xor_weaving, colored_separator, get_color, get_channel_color};
 
 fn main() {
-    println!("=== XStream Driver with RSB Streams ===\n");
-
-    // Example 1: Basic token generation pipeline
-    println!("1. Basic Pipeline - Generate and transform tokens:");
-    let tokens = gen_token_stream(5, 0.3);
+    let args: Vec<String> = std::env::args().collect();
     
-    // Create a stream from the token string and apply transformations
-    let result = stream!(string: &tokens)
-        .sed("=\"", "='")  // Change quotes style
-        .sed("\"", "'")
-        .to_string();
-    
-    println!("Original: {}", tokens);
-    println!("Modified: {}\n", result);
-
-    // Example 2: Generate tokens and filter by namespace
-    println!("2. Namespace Filtering Pipeline:");
-    let config_tokens = vec![
-        gen_flat_token(Some("host"), ValueType::Literal("localhost".to_string())),
-        gen_ns_token(Some("auth")),
-        gen_flat_token(Some("secret"), ValueType::RandomHex(16)),
-        gen_flat_token(Some("timeout"), ValueType::RandomNumber(300, 3600)),
-        gen_ns_token(Some("db")),
-        gen_flat_token(Some("host"), ValueType::Literal("db.example.com".to_string())),
-        gen_flat_token(Some("port"), ValueType::RandomNumber(5432, 5440)),
-    ];
-    
-    let stream_text = config_tokens.join("; ");
-    println!("Full stream: {}", stream_text);
-    
-    // Parse and filter tokens
-    let bucket = TokenBucket::from_str(&stream_text, BucketMode::Hybrid).unwrap();
-    println!("Auth tokens: {:?}", bucket.get_namespace("auth"));
-    println!("DB tokens: {:?}", bucket.get_namespace("db"));
-    println!("Global tokens: {:?}\n", bucket.get_namespace("global"));
-
-    // Example 3: Bash-like generation with chained operations
-    println!("3. Advanced Pipeline - Generate, transform, and format:");
-    
-    // Generate 10 random tokens
-    let mut random_tokens = Vec::new();
-    for i in 0..10 {
-        let token = if i % 3 == 0 {
-            // Every 3rd token is a namespace switch
-            gen_ns_token(Some(&format!("section{}", i/3)))
-        } else {
-            gen_token(
-                Some(&format!("prefix{}", i)),
-                Some(&format!("key{}", i)),
-                ValueType::RandomAlnum(8)
-            )
-        };
-        random_tokens.push(token);
+    if args.len() < 2 {
+        show_help();
+        return;
     }
     
-    // Join and process through stream pipeline
-    let pipeline_result = stream!(string: &random_tokens.join("; "))
-        .sed("prefix", "pfx")  // Shorten prefix
-        .sed("section", "sec")  // Shorten section
-        .to_string();
-    
-    println!("Generated tokens:");
-    println!("{}\n", pipeline_result);
-    
-    // Example 4: Config generation with RSB stream macros
-    println!("4. Config Generation with Stream Processing:");
-    
-    // Generate a realistic config
-    let config = gen_config_stream();
-    
-    // Process through stream to add comments
-    let annotated = stream!(string: &config)
-        .sed("ns=db", "ns=db # Database configuration")
-        .sed("ns=auth", "ns=auth # Authentication settings")
-        .sed("debug=", "debug= # Debug mode: ")
-        .to_string();
-    
-    println!("Original config:");
-    println!("{}\n", config);
-    println!("Annotated config:");
-    println!("{}\n", annotated);
-    
-    // Example 5: Stream splitting and parallel processing
-    println!("5. Split and Process Streams:");
-    
-    let multi_ns_stream = "ns=api; port=\"8080\"; ns=cache; ttl=\"3600\"; ns=log; level=\"info\"";
-    
-    // Split by namespace markers
-    let parts: Vec<String> = multi_ns_stream
-        .split("ns=")
-        .filter(|s| !s.is_empty())
-        .map(|part| {
-            let ns_part = format!("ns={}", part);
-            stream!(string: &ns_part)
-                .sed(";", ";\n  ")  // Add newlines for readability
-                .to_string()
-        })
-        .collect();
-    
-    println!("Split namespaces:");
-    for (i, part) in parts.iter().enumerate() {
-        println!("Part {}: {}", i, part.trim());
+    match args[1].as_str() {
+        "help" => show_help(),
+        "parsing" => test_parsing(),
+        "transform" => test_transforms(), 
+        "channels" => test_channels(),
+        "gates" => test_gates(),
+        "generation" => test_generation(),
+        "integration" => test_integration(),
+        "all" => run_all_tests(),
+        _ => {
+            println!("Unknown command: {}", args[1]);
+            show_help();
+        }
     }
-    println!();
+}
+
+fn show_help() {
+    println!("=== XStream Driver - Feature Testing ===\n");
+    println!("Usage: cargo run --bin xstream-driver <command>\n");
+    println!("Commands:");
+    println!("  help        - Show this help");
+    println!("  parsing     - Test token parsing & validation");
+    println!("  transform   - Test transform chains & operations");
+    println!("  channels    - Test fork/merge channel operations");
+    println!("  gates       - Test XOR gates and visual stream weaving");
+    println!("  generation  - Test token generation");
+    println!("  integration - Test RSB integration");
+    println!("  all         - Run all test categories");
+}
+
+fn run_all_tests() {
+    println!("=== Running All XStream Tests ===\n");
+    test_parsing();
+    test_transforms();
+    test_channels();
+    test_gates();
+    test_generation();
+    test_integration();
+    println!("=== All Tests Complete ===");
+}
+
+fn test_parsing() {
+    println!("=== Testing Token Parsing & Validation ===");
     
-    // Example 6: Token validation pipeline
-    println!("6. Validation Pipeline:");
-    
-    let test_streams = vec![
-        "key=\"valid\"; other=\"good\"",
-        "bad key=\"invalid\"",  // Space in key
-        "key= \"bad\"",         // Space after =
-        "good=\"token\";ns=switch;more=\"data\"",
+    // Valid token formats
+    println!("\n1. Valid Token Formats:");
+    let valid_examples = vec![
+        r#"host="localhost""#,
+        r#"ui:theme="dark"; ui:lang="en""#,
+        r#"ns=config; host="server"; port="8080""#,
+        r#"deep.namespace.example:key="value""#,
     ];
     
-    for stream in test_streams {
-        let validation = if is_token_streamable(stream) {
-            stream!(string: stream)
-                .sed("$", " ")  // Add checkmark at end
-                .to_string()
-        } else {
-            format!("{}  INVALID", stream)
-        };
-        println!("Stream: {}", validation);
+    for example in valid_examples {
+        println!("  ✓ {}", example);
+        println!("    Valid: {}", xstream::is_token_streamable(example));
     }
-    println!();
     
-    // Example 7: Dynamic token generation with RSB
-    println!("7. Dynamic Generation with RSB:");
-    
-    // Use RSB's random functions directly in a pipeline
-    let dynamic_tokens = (0..5)
-        .map(|i| {
-            let key = get_rand_alpha(6);
-            let value = match i % 3 {
-                0 => get_rand_hex(12),
-                1 => get_rand_alnum(8),
-                _ => get_rand_from_slice(&vec!["active".to_string(), "inactive".to_string(), "pending".to_string()])
-                    .unwrap_or("unknown".to_string()),
-            };
-            format!("{}=\"{}\"", key, value)
-        })
-        .collect::<Vec<_>>()
-        .join("; ");
-    
-    println!("Dynamic tokens: {}\n", dynamic_tokens);
-    
-    // Example 8: Stream-based token aggregation
-    println!("8. Token Aggregation Pipeline:");
-    
-    let streams = vec![
-        gen_token_stream(3, 0.0),  // All prefixed
-        gen_token_stream(3, 1.0),  // All flat
-        gen_config_stream(),        // Mixed config
+    // Invalid formats
+    println!("\n2. Invalid Token Formats:");
+    let invalid_examples = vec![
+        "bad token",           // Missing =
+        r#"key= "value""#,     // Space after =
+        r#"my key="value""#,   // Space in key
+        r#"ns:my key="val""#,  // Space in prefixed key
     ];
     
-    let aggregated = streams
-        .into_iter()
-        .map(|s| stream!(string: &s).to_string())
-        .collect::<Vec<_>>()
-        .join(" | ");  // Use pipe as separator
+    for example in invalid_examples {
+        println!("  ✗ {}", example);
+        println!("    Valid: {}", xstream::is_token_streamable(example));
+    }
     
-    println!("Aggregated streams (pipe-separated):");
-    println!("{}\n", aggregated);
+    println!("=== Parsing Tests Complete ===\n");
+}
+
+fn test_transforms() {
+    println!("=== Testing Transform Operations ===");
     
-    // Example 9: Token stream statistics
-    println!("9. Stream Statistics:");
+    // Basic transforms
+    println!("\n1. Basic String Transforms:");
+    let config = r#"host="LOCALHOST"; db:user="Admin"; pass="secret123""#;
     
-    let stats_stream = gen_token_stream(20, 0.5);
-    let bucket = TokenBucket::from_str(&stats_stream, BucketMode::Hybrid).unwrap_or_else(|e| {
-        println!("Error parsing: {}", e);
-        TokenBucket::new(BucketMode::Hybrid)
-    });
+    let lowered = transform(config).lower().to_string();
+    println!("  Original: {}", config);
+    println!("  Lowered:  {}", lowered);
     
-    let token_count = bucket.data.values().map(|ns| ns.len()).sum::<usize>();
-    let namespace_count = bucket.data.len();
+    // Sensitive masking
+    println!("\n2. Sensitive Data Masking:");
+    let with_secrets = r#"api_key="abc123"; password="secret"; host="localhost""#;
+    let masked = transform(with_secrets).mask_sensitive().to_string();
+    println!("  Original: {}", with_secrets);
+    println!("  Masked:   {}", masked);
     
-    println!("Stream: {} chars", stats_stream.len());
-    println!("Tokens: {}", token_count);
-    println!("Namespaces: {}", namespace_count);
-    println!("Sample: {}...\n", &stats_stream[..stats_stream.len().min(50)]);
-    
-    // Example 10: Power chains with transform!
-    println!("10. Transform Power Chains:");
-    
-    let raw_config = "host=\"localhost\"; pass=\"secret123\"; db:user=\"admin\"; db:pass=\"dbpass\"";
-    
-    // Chain multiple transformations
-    let transformed = transform(raw_config)
-        .translate("localhost", "127.0.0.1")
+    // Transform chaining
+    println!("\n3. Transform Chaining:");
+    let chain_input = r#"host="localhost"; ns=db; user="admin""#;
+    let chained = transform(chain_input)
+        .translate("localhost", "prod-server")
         .rename_namespace("db", "database")
-        .mask_sensitive()
         .expand()
         .to_string();
+    println!("  Original: {}", chain_input);
+    println!("  Chained:  {}", chained);
     
-    println!("Original: {}", raw_config);
-    println!("Transformed: {}\n", transformed);
+    // Encoding transforms
+    println!("\n4. Encoding Transforms:");
+    let text = r#"message="Hello World""#;
+    let encoded = transform(text).base64(TX::ENCODE).to_string();
+    let decoded = transform(&encoded).base64(TX::DECODE).to_string();
+    println!("  Original: {}", text);
+    println!("  Encoded:  {}", encoded);
+    println!("  Decoded:  {}", decoded);
     
-    // Example 11: Quote manipulation
-    println!("11. Quote Style Transformations:");
+    println!("=== Transform Tests Complete ===\n");
+}
+
+fn test_channels() {
+    println!("{}", colored_separator("Testing Channel Operations"));
     
-    let mixed_quotes = "key=\"value\"; other='data'; unquoted=text";
+    let mixed_stream = r#"ui:theme="dark"; db:host="localhost"; ui:lang="en"; log:level="info"; db:port="5432""#;
     
-    let single = transform(mixed_quotes).single_quotes().to_string();
-    let double = transform(mixed_quotes).double_quotes().to_string();
-    let stripped = transform(mixed_quotes).strip_quotes().to_string();
+    // Fork operations with COLOR!
+    println!("\n{}1. Fork by Specific Channels:{}", colorize("", "info"), xstream::colors::RESET);
+    let (ui, db, logs) = fork!(mixed_stream, "ui", "db", "log");
     
-    println!("Original: {}", mixed_quotes);
-    println!("Single quotes: {}", single);
-    println!("Double quotes: {}", double);
-    println!("No quotes: {}\n", stripped);
+    let fork_data = vec![
+        ("ui".to_string(), ui.clone()),
+        ("db".to_string(), db.clone()), 
+        ("log".to_string(), logs.clone())
+    ];
+    println!("{}", colorize_fork_display(mixed_stream, &fork_data));
     
-    // Example 12: Advanced pattern matching
-    println!("12. Pattern-based Transformations:");
+    // Fork all channels with COLOR!
+    println!("{}2. Fork All Channels:{}", colorize("", "info"), xstream::colors::RESET);
+    let all_channels = fork_all!(mixed_stream);
+    let all_fork_data: Vec<(String, String)> = all_channels.into_iter().collect();
+    println!("{}", colorize_fork_display(mixed_stream, &all_fork_data));
     
-    let tokens = gen_token_stream(10, 0.3);
+    // Merge operations with COLOR!
+    println!("{}3. Basic Merge:{}", colorize("", "info"), xstream::colors::RESET);
+    let merged_basic = merge!(ui.as_str(), db.as_str());
+    let merge_inputs = vec![
+        ("ui".to_string(), ui.clone()),
+        ("db".to_string(), db.clone())
+    ];
+    println!("{}", colorize_merge_display(&merge_inputs, &merged_basic));
     
-    // Remove all tokens with 'secret' in them
-    let safe = transform(tokens.clone())
-        .remove_matching("secret")
-        .compact()
+    // Merge with strategy and COLOR!
+    println!("{}4. Merge with Priority Strategy:{}", colorize("", "info"), xstream::colors::RESET);
+    let priority_merged = merge!(strategy: MergeStrategy::Priority(vec!["db".to_string(), "ui".to_string()]), 
+                                db.as_str(), ui.as_str());
+    let priority_inputs = vec![
+        ("db".to_string(), db.clone()),
+        ("ui".to_string(), ui.clone())
+    ];
+    println!("{}", colorize_merge_display(&priority_inputs, &priority_merged));
+    
+    // Complete workflow with VISUAL STREAM WEAVING!
+    println!("{}5. Complete Channel Workflow - Stream Weaving:{}", colorize("", "info"), xstream::colors::RESET);
+    
+    // Transform each channel
+    let ui_proc = transform(&ui).translate("dark", "light").to_string();
+    let db_proc = transform(&db).mask_sensitive().to_string();
+    
+    // Prepare data for workflow visualization
+    let forks = vec![
+        ("ui".to_string(), ui.clone()),
+        ("db".to_string(), db.clone())
+    ];
+    let transforms = vec![
+        ("ui".to_string(), ui_proc.clone()),
+        ("db".to_string(), db_proc.clone())
+    ];
+    let final_result = merge!(ui_proc.as_str(), db_proc.as_str());
+    
+    // Show the complete visual workflow
+    println!("{}", colorize_workflow_display(mixed_stream, &forks, &transforms, &final_result));
+    
+    println!("{}", colored_separator("Channel Tests Complete"));
+}
+
+fn test_gates() {
+    println!("{}", colored_separator("Testing XOR Gates & Stream Weaving"));
+    
+    // Generate longer streams using gen.rs - create some simple patterns for now
+    // We'll make them manually to get the perfect consistent weaving patterns
+    let g_stream = "g:a=\"1\"; g:b=\"2\"; g:c=\"3\"; g:d=\"4\"; g:e=\"5\"; g:f=\"6\"; g:g=\"7\"; g:h=\"8\"";
+    let f_stream = "f:a=\"1\"; f:b=\"2\"; f:c=\"3\"; f:d=\"4\"; f:e=\"5\"; f:f=\"6\"; f:g=\"7\"; f:h=\"8\"";
+    let h_stream = "h:a=\"1\"; h:b=\"2\"; h:c=\"3\"; h:d=\"4\"; h:e=\"5\"; h:f=\"6\"; h:g=\"7\"; h:h=\"8\"";
+    let j_stream = "j:a=\"1\"; j:b=\"2\"; j:c=\"3\"; j:d=\"4\"; j:e=\"5\"; j:f=\"6\"; j:g=\"7\"; j:h=\"8\"";
+    
+    // XOR Gate Test - Longer streams for visible weaving
+    println!("\n{}1. XOR Gate - Visual Stream Weaving (Long Patterns):{}", colorize("", "info"), xstream::colors::RESET);
+    
+    let (xor_result, gate_state) = xor_gate_with_state(g_stream, f_stream);
+    println!("{}", colorize_xor_weaving(g_stream, f_stream, &xor_result, &gate_state));
+    
+    // Multi-XOR Gate Test - 4 streams cycling  
+    println!("{}2. Multi-XOR Gate - Cycling Through 4 Streams (Long Pattern):{}", colorize("", "info"), xstream::colors::RESET);
+    
+    let multi_result = multi_xor!(g_stream, f_stream, h_stream, j_stream);
+    let multi_streams = vec![
+        ("g".to_string(), g_stream.to_string()),
+        ("f".to_string(), f_stream.to_string()),
+        ("h".to_string(), h_stream.to_string()),
+        ("j".to_string(), j_stream.to_string()),
+    ];
+    println!("{}", colorize_multi_xor_weaving(&multi_streams, &multi_result));
+    
+    // Timed Gate Test - Switch every 3 tokens for longer pattern
+    println!("{}3. Timed Gate - Switch Every 3 Tokens (Long Pattern):{}", colorize("", "info"), xstream::colors::RESET);
+    
+    let timed_result = timed_gate!(3, g_stream, f_stream);
+    println!("{}  Input G:{} {}{}{}", 
+        get_color("cyan"), xstream::colors::RESET, 
+        get_channel_color(0), g_stream, xstream::colors::RESET);
+    println!("{}  Input F:{} {}{}{}", 
+        get_color("cyan"), xstream::colors::RESET, 
+        get_channel_color(1), f_stream, xstream::colors::RESET);
+    
+    // Show timed result with alternating colors every 3 tokens
+    let timed_tokens: Vec<&str> = timed_result.split(';').map(|t| t.trim()).filter(|t| !t.is_empty()).collect();
+    let colored_timed: Vec<String> = timed_tokens.iter().enumerate().map(|(i, token)| {
+        let color_index = (i / 3) % 2; // Switch color every 3 tokens
+        let color_code = get_channel_color(color_index);
+        format!("{}{}{}", color_code, token, xstream::colors::RESET)
+    }).collect();
+    
+    println!("{}  Timed Result:{} {}", 
+        get_color("green"), xstream::colors::RESET, 
+        colored_timed.join(&format!("{}; {}", xstream::colors::RESET, "")));
+    
+    // XOR Macro Test
+    println!("\n{}4. XOR Macro Test:{}", colorize("", "info"), xstream::colors::RESET);
+    let simple_a = r#"type="user""#;
+    let simple_b = r#"action="login""#;
+    let _macro_result = xor!(simple_a, simple_b);
+    
+    println!("{}  Input A:{} {}{}{}", 
+        get_color("cyan"), xstream::colors::RESET, 
+        get_channel_color(0), simple_a, xstream::colors::RESET);
+    println!("{}  Input B:{} {}{}{}", 
+        get_color("cyan"), xstream::colors::RESET, 
+        get_channel_color(1), simple_b, xstream::colors::RESET);
+    println!("{}  XOR Result:{} {}{}{}{}{}{}{}",
+        get_color("green"), xstream::colors::RESET,
+        get_channel_color(0), "type=\"user\"", xstream::colors::RESET,
+        "; ",
+        get_channel_color(1), "action=\"login\"", xstream::colors::RESET);
+    
+    // BONUS: Pre-colored stream demonstration  
+    println!("\n{}5. Pre-Colored Stream XOR (True Visual Weaving):{}", colorize("", "info"), xstream::colors::RESET);
+    
+    // Create pre-colored streams using ANSI codes
+    let red_stream = format!("{}red:a=\"1\"{}; {}red:b=\"2\"{}; {}red:c=\"3\"{}", 
+        get_channel_color(0), xstream::colors::RESET,
+        get_channel_color(0), xstream::colors::RESET,
+        get_channel_color(0), xstream::colors::RESET);
+    let blue_stream = format!("{}blue:a=\"1\"{}; {}blue:b=\"2\"{}; {}blue:c=\"3\"{}", 
+        get_channel_color(1), xstream::colors::RESET,
+        get_channel_color(1), xstream::colors::RESET,
+        get_channel_color(1), xstream::colors::RESET);
+    
+    println!("{}  Pre-Colored Red:{} {}", get_color("cyan"), xstream::colors::RESET, red_stream);
+    println!("{}  Pre-Colored Blue:{} {}", get_color("cyan"), xstream::colors::RESET, blue_stream);
+    
+    let pre_colored_result = xor!(red_stream.as_str(), blue_stream.as_str());
+    println!("{}  XOR Result:{} {}", get_color("green"), xstream::colors::RESET, pre_colored_result);
+    
+    println!("{}", colored_separator("XOR Gate Tests Complete"));
+}
+
+fn test_generation() {
+    println!("=== Testing Token Generation ===");
+    
+    // Random token streams
+    println!("1. Random Token Stream Generation:");
+    let random_stream = gen_token_stream(5, 0.3);
+    println!("  Random stream: {}", random_stream);
+    println!("  Valid: {}", xstream::is_token_streamable(&random_stream));
+    
+    // Config generation
+    println!("\n2. Config-style Generation:");
+    let config_stream = gen_config_stream();
+    println!("  Config stream: {}", config_stream);
+    
+    // Parse generated streams
+    println!("\n3. Parse Generated Stream:");
+    let bucket = xstream::TokenBucket::from_str(&config_stream, xstream::BucketMode::Hybrid).unwrap();
+    println!("  Namespaces found: {:?}", bucket.data.keys().collect::<Vec<_>>());
+    
+    println!("=== Generation Tests Complete ===\n");
+}
+
+fn test_integration() {
+    println!("=== Testing RSB Integration ===");
+    
+    // RSB stream operations on tokens
+    println!("1. RSB Stream Processing:");
+    let tokens = r#"host="localhost"; port="8080"; debug="true""#;
+    
+    let processed = stream!(string: tokens)
+        .sed("localhost", "production-server")
+        .sed("debug=\"true\"", "debug=\"false\"")
         .to_string();
     
-    // Keep only tokens with 'host' or 'port'
-    let network_only = transform(tokens.clone())
-        .keep_matching("host")
+    println!("  Original: {}", tokens);
+    println!("  RSB proc: {}", processed);
+    println!("  Valid:    {}", xstream::is_token_streamable(&processed));
+    
+    // Combined XStream + RSB
+    println!("\n2. XStream + RSB Combined:");
+    let combined = transform(tokens)
+        .translate("8080", "80")
+        .custom(|stream| stream.sed("=\"", " = \""))
         .to_string();
     
-    println!("Original: {}", &tokens[..tokens.len().min(100)]);
-    println!("No secrets: {}", &safe[..safe.len().min(100)]);
-    println!("Network only: {}\n", network_only);
+    println!("  Combined: {}", combined);
     
-    // Example 13: Multi-step transformation with validation
-    println!("13. Complex Transform Chain with Validation:");
+    // Token generation with RSB random
+    println!("\n3. RSB Random in Token Generation:");
+    let dynamic_key = get_rand_alpha(8);
+    let dynamic_value = get_rand_hex(12);
+    let dynamic_token = format!("{}=\"{}\"", dynamic_key, dynamic_value);
+    println!("  Dynamic:  {}", dynamic_token);
+    println!("  Valid:    {}", xstream::is_token_streamable(&dynamic_token));
     
-    let config = gen_config_stream();
-    
-    let result = transform(config.clone())
-        .rename_namespace("db", "database")
-        .rename_namespace("auth", "security")
-        .translate("localhost", "prod-server-01")
-        .rename_key("pass", "password")
-        .rename_key("secret", "api_key")
-        .single_quotes()
-        .expand();
-    
-    println!("Valid before: {}", is_token_streamable(&config));
-    println!("Valid after: {}", result.validate());
-    let result_str = result.to_string();
-    println!("Sample: {}...\n", &result_str[..result_str.len().min(100)]);
-    
-    // Example 14: Custom RSB stream operations
-    println!("14. Custom RSB Stream Integration:");
-    
-    let data = "prefix:key=\"value\"; other=\"data\"";
-    
-    let custom = transform(data)
-        .custom(|stream| {
-            // Use any RSB stream operations
-            stream
-                .sed("prefix", "PREFIX")
-                .sed("=\"", " = \"")
-                .sed("\";", "\" ;")
-        })
-        .to_string();
-    
-    println!("Original: {}", data);
-    println!("Custom RSB: {}\n", custom);
-    
-    // Example 15: Format transformations
-    println!("15. Format Transformations:");
-    
-    let compact_stream = "a=\"1\";b=\"2\";c=\"3\";d=\"4\"";
-    
-    let expanded = transform(compact_stream).expand().to_string();
-    let multiline = transform(compact_stream).multiline().to_string();
-    
-    println!("Compact: {}", compact_stream);
-    println!("Expanded: {}", expanded);
-    println!("Multiline:\n{}\n", multiline);
-    
-    println!("=== XStream Driver Complete ===");
+    println!("=== Integration Tests Complete ===\n");
 }

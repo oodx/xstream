@@ -1,104 +1,125 @@
 // XStream Color Generator Binary
 // Specialized tool for generating pre-colored test streams
-// Usage: cargo run --bin xstream-color-gen --theme rainbow --count 10
+// Usage: cargo run --bin xstream-color-gen theme --theme=rainbow --count=10
 
-use clap::{Parser, Subcommand};
+use rsb::prelude::*;
 use std::collections::HashMap;
 
-#[derive(Parser)]
-#[command(name = "xstream-color-gen")]
-#[command(about = "Specialized color stream generator for XStream testing")]
-struct Cli {
-    #[command(subcommand)]
-    command: Commands,
-}
-
-#[derive(Subcommand)]
-enum Commands {
-    /// Generate themed color streams
-    Theme {
-        /// Color theme (rainbow|warm|cool|mono|neon|pastel|earth)
-        #[arg(long, default_value = "rainbow")]
-        theme: String,
-        
-        /// Number of colored tokens to generate
-        #[arg(long, default_value = "8")]
-        count: usize,
-        
-        /// Output format (tokens|blocks|gradient)
-        #[arg(long, default_value = "tokens")]
-        format: String,
-    },
-    
-    /// Generate namespace-colored streams
-    Namespace {
-        /// Comma-separated namespaces to color
-        #[arg(long, default_value = "ui,db,api")]
-        namespaces: String,
-        
-        /// Tokens per namespace
-        #[arg(long, default_value = "3")]
-        tokens: usize,
-        
-        /// Include visual symbols
-        #[arg(long, default_value = "false")]
-        symbols: bool,
-    },
-    
-    /// Generate color gradients for pipeline visualization
-    Gradient {
-        /// Starting color
-        #[arg(long, required = true)]
-        start: String,
-        
-        /// Ending color
-        #[arg(long, required = true)]
-        end: String,
-        
-        /// Number of gradient steps
-        #[arg(long, default_value = "5")]
-        steps: usize,
-    },
-    
-    /// Generate color palettes for testing
-    Palette {
-        /// Palette type (web|terminal|ansi|rgb)
-        #[arg(long, default_value = "terminal")]
-        palette: String,
-        
-        /// Include color codes in output
-        #[arg(long, default_value = "false")]
-        codes: bool,
-    },
-}
-
 fn main() {
-    let cli = Cli::parse();
+    let args = bootstrap!();
     
-    match &cli.command {
-        Commands::Theme { theme, count, format } => {
-            let result = generate_themed_stream(theme, *count, format);
-            println!("{}", result);
-        }
-        Commands::Namespace { namespaces, tokens, symbols } => {
-            let ns_list: Vec<&str> = namespaces.split(',').collect();
-            let result = if *symbols {
-                generate_symbol_colored_stream(&ns_list, *tokens)
-            } else {
-                generate_namespace_colored_stream(&ns_list, *tokens)
-            };
-            println!("{}", result);
-        }
-        Commands::Gradient { start, end, steps } => {
-            let result = generate_color_gradient(start, end, *steps);
-            println!("{}", result);
-        }
-        Commands::Palette { palette, codes } => {
-            let result = generate_color_palette(palette, *codes);
-            println!("{}", result);
-        }
+    if args.len() < 2 {
+        let empty_args = vec![];
+        show_help(Args::new(&empty_args));
+        return;
     }
+    
+    let result = match args[1].as_str() {
+        "theme" => handle_theme_command(Args::new(&args)),
+        "namespace" => handle_namespace_command(Args::new(&args)),
+        "gradient" => handle_gradient_command(Args::new(&args)),
+        "palette" => handle_palette_command(Args::new(&args)),
+        "help" => show_help(Args::new(&args)),
+        _ => {
+            println!("Unknown command: {}. Use 'help' for usage information.", args[1]);
+            let empty_args = vec![];
+            show_help(Args::new(&empty_args))
+        }
+    };
+    std::process::exit(result);
 }
+
+fn show_help(_args: Args) -> i32 {
+    println!("Specialized color stream generator for XStream testing");
+    println!("");
+    println!("USAGE:");
+    println!("    xstream-color-gen <COMMAND> [OPTIONS]");
+    println!("");
+    println!("COMMANDS:");
+    println!("    theme       Generate themed color streams");
+    println!("    namespace   Generate namespace-colored streams");
+    println!("    gradient    Generate color gradients for pipeline visualization");
+    println!("    palette     Generate color palettes for testing");
+    println!("    help        Show this help message");
+    println!("");
+    println!("THEME OPTIONS:");
+    println!("    --theme=<THEME>    Color theme: rainbow|warm|cool|mono|neon|pastel|earth (default: rainbow)");
+    println!("    --count=<N>        Number of colored tokens to generate (default: 8)");
+    println!("    --format=<FORMAT>  Output format: tokens|blocks|gradient (default: tokens)");
+    println!("");
+    println!("NAMESPACE OPTIONS:");
+    println!("    --namespaces=<ns1,ns2>  Comma-separated namespaces to color (default: ui,db,api)");
+    println!("    --tokens=<N>           Tokens per namespace (default: 3)");
+    println!("    --symbols=<BOOL>       Include visual symbols (default: false)");
+    println!("");
+    println!("GRADIENT OPTIONS:");
+    println!("    --start=<COLOR>       Starting color (required)");
+    println!("    --end=<COLOR>         Ending color (required)");
+    println!("    --steps=<N>           Number of gradient steps (default: 5)");
+    println!("");
+    println!("PALETTE OPTIONS:");
+    println!("    --palette=<TYPE>      Palette type: web|terminal|ansi|rgb (default: terminal)");
+    println!("    --codes=<BOOL>        Include color codes in output (default: false)");
+    0
+}
+
+fn handle_theme_command(mut args: Args) -> i32 {
+    let theme = args.get_kv("theme").unwrap_or("rainbow".to_string());
+    let count = args.get_kv("count").unwrap_or("8".to_string()).parse::<usize>().unwrap_or(8);
+    let format = args.get_kv("format").unwrap_or("tokens".to_string());
+    
+    let result = generate_themed_stream(&theme, count, &format);
+    println!("{}", result);
+    0
+}
+
+fn handle_namespace_command(mut args: Args) -> i32 {
+    let namespaces = args.get_kv("namespaces").unwrap_or("ui,db,api".to_string());
+    let tokens = args.get_kv("tokens").unwrap_or("3".to_string()).parse::<usize>().unwrap_or(3);
+    let symbols = args.get_kv("symbols").unwrap_or("false".to_string()) == "true";
+    
+    let ns_list: Vec<&str> = namespaces.split(',').collect();
+    let result = if symbols {
+        generate_symbol_colored_stream(&ns_list, tokens)
+    } else {
+        generate_namespace_colored_stream(&ns_list, tokens)
+    };
+    println!("{}", result);
+    0
+}
+
+fn handle_gradient_command(mut args: Args) -> i32 {
+    let start = match args.get_kv("start") {
+        Some(s) => s,
+        None => {
+            println!("Error: --start is required for gradient command");
+            return 1;
+        }
+    };
+    let end = match args.get_kv("end") {
+        Some(e) => e,
+        None => {
+            println!("Error: --end is required for gradient command");
+            return 1;
+        }
+    };
+    let steps = args.get_kv("steps").unwrap_or("5".to_string()).parse::<usize>().unwrap_or(5);
+    
+    let result = generate_color_gradient(&start, &end, steps);
+    println!("{}", result);
+    0
+}
+
+fn handle_palette_command(mut args: Args) -> i32 {
+    let palette = args.get_kv("palette").unwrap_or("terminal".to_string());
+    let codes = args.get_kv("codes").unwrap_or("false".to_string()) == "true";
+    
+    let result = generate_color_palette(&palette, codes);
+    println!("{}", result);
+    0
+}
+
+// Removed parse_arg function - using RSB Args methods instead
 
 fn generate_themed_stream(theme: &str, count: usize, format: &str) -> String {
     let color_set = get_theme_colors(theme);

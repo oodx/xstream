@@ -20,9 +20,9 @@ name = "xstream-color-gen"
 path = "src/bin/xstream-color-gen.rs"
 
 [dependencies]
-clap = { version = "4.0", features = ["derive"] }
 # RSB framework with re-exported dependencies
-rsb = { git = "https://github.com/oodx/rebel", branch = "main" }
+rsb = { path = "../rsb" }
 base64 = "0.22"
 urlencoding = "2.1"
 regex = "1.10"
+serde_json = "1.0"

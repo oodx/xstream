@@ -1,378 +1,672 @@
-# XStream 🚀
+# XStream
 
-[![Rust](https://img.shields.io/badge/rust-%23000000.svg?style=for-the-badge&logo=rust&logoColor=white)](https://www.rust-lang.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen?style=for-the-badge)](#)
+**Advanced Stream Processing with Visual Flow Tracking**
 
-> **Revolutionary Token Stream Processing** - Fluent, composable, and powerful stream transformations built on the RSB framework.
+XStream is a sophisticated Rust library and toolkit for processing token streams with colorful visual tracking, namespace-aware operations, and robust pipeline management. Built on the RSB (Rebel) framework, it provides powerful stream manipulation capabilities with beautiful, color-coded visual feedback.
 
-XStream is a next-generation token processing library that provides three distinct API tiers for maximum flexibility: from fluent transformation chains to composable streamables to raw RSB power. Whether you're processing configuration tokens, transforming data streams, or building complex token pipelines, XStream adapts to your needs.
+**NEW**: XStream now features user-friendly adapters and macros that make integration simple and intuitive. Convert JSON/CSV to token streams, use fluent APIs for complex operations, and leverage convenient macros for common patterns.
 
-## ✨ Key Features
+## 🌟 Features
 
-- 🔥 **Three-Tier API Architecture** - Choose your abstraction level
-- ⚡ **Built on RSB/REBEL** - Industrial-strength stream processing foundation
-- 🎯 **Token-Aware Processing** - Native understanding of `key="value"` token formats
-- 🔗 **Fluent Transformation Chains** - Intuitive method chaining for complex operations
-- 🧩 **Composable Streamables** - Reusable, combinable processing components
-- 🚀 **Terse Transform API** - Compact operations with `tx::` markers
-- 🛡️ **Type-Safe Operations** - Rust's safety guarantees throughout
-- 📦 **Namespace Support** - Handle complex token hierarchies with ease
+- **🍴 Fork Operations**: Split streams by namespace with intelligent discovery
+- **🔀 Merge Strategies**: Concatenate, interleave, and deduplicate streams  
+- **🚪 Gate Controls**: Filter streams by token count, namespace requirements, and synchronization
+- **🔄 Pipeline Chains**: Multi-stage stream transformations with error recovery
+- **🎨 Visual Tracking**: Color-coded token visualization preserves origin through operations
+- **⚡ RSB Integration**: Built on the proven Rebel framework for reliability
+- **📱 Easy Integration**: XStreamAdapter for JSON/CSV conversion and external system integration
+- **🏗️ User-Friendly Macros**: Intuitive macros for common operations and testing patterns
+- **🔗 Fluent API**: Method chaining for readable and maintainable stream processing
+- **📊 Test Utilities**: Built-in helpers for generating test data and validating operations
 
-## 🔧 Quick Installation
+## 📦 Installation & Setup
 
-Add to your `Cargo.toml`:
+### Prerequisites
 
-```toml
-[dependencies]
-xstream = { git = "https://github.com/oodx/xstream", branch = "main" }
-```
+- Rust 1.70+ with Cargo
+- Git access to RSB framework repository
 
-Or clone and build locally:
-
-```bash
-git clone https://github.com/oodx/xstream.git
-cd xstream
-cargo build --release
-```
-
-## 📖 Basic Usage
-
-### Tier 1: Fluent Transform API (Recommended for most users)
-
-The fluent API provides intuitive method chaining for common token operations:
-
-```rust
-use xstream::prelude::*;
-
-// Transform a token stream with method chaining
-let tokens = "user=\"alice\"; pass=\"secret123\"; role=\"admin\"";
-
-let result = transform(tokens)
-    .mask_sensitive()           // Hide sensitive values
-    .swap_quotes()              // Change quote style
-    .upper()                    // Uppercase values
-    .compact()                  // Remove extra spaces
-    .to_string();
-
-// Output: "user='ALICE';pass='***';role='ADMIN'"
-```
-
-### Advanced Transformations
-
-```rust
-// Complex token manipulation
-let config_stream = transform("app:name=\"MyApp\"; app:version=\"1.0\"; debug=\"true\"")
-    .rename_namespace("app", "application")
-    .add_quotes('"')
-    .multiline()
-    .to_string();
-
-// Validation and parsing
-let parsed = transform(tokens)
-    .validate()                 // Check if still parseable
-    .parse(BucketMode::Strict)?; // Parse into TokenBucket
-```
-
-### Tier 2: Composable Streamables
-
-Perfect for building reusable processing pipelines:
-
-```rust
-use xstream::prelude::*;
-
-// Use token-specific streamables
-let token_count = stream!(string: tokens)
-    .streamable!(TokenCount)
-    .to_string();
-
-let keys_only = stream!(string: tokens)
-    .streamable!(ExtractKeys)
-    .to_string();
-
-let filtered = stream!(string: tokens)
-    .streamable!(FilterTokens, key_contains: "user")
-    .to_string();
-```
-
-### Tier 3: Raw RSB Power
-
-For maximum control and custom operations:
-
-```rust
-use rsb::prelude::*;
-
-// Direct RSB stream operations
-let result = stream!(string: tokens)
-    .sed(r#"pass="[^"]*""#, r#"pass="***""#)
-    .sed(";", ";\n")
-    .to_string();
-
-// Custom streamable integration
-let custom_result = stream!(string: tokens)
-    .custom(|s| s.sed("old", "new").map_lines(|line| line.to_uppercase()))
-    .to_string();
-```
-
-## 🎯 Core Concepts
-
-### Token Format
-
-XStream understands structured token formats:
-
-```
-key="value"; ns:subkey="data"; flag="true"
-```
-
-- **Simple tokens**: `key="value"`
-- **Namespaced tokens**: `namespace:key="value"`
-- **Namespace switches**: `ns="namespace"`
-
-### The Three-Tier Architecture
-
-1. **Fluent API (`transform()`)** - High-level, intuitive operations
-2. **Composable Streamables** - Reusable, type-safe components
-3. **Raw RSB** - Full control, custom operations
-
-### Terse Transform API
-
-Use `tx::` markers for compact operations:
-
-```rust
-use xstream::{transform, tx};
-
-let encoded = transform(data)
-    .base64(tx::ENCODE)
-    .esc(tx::QUOTES)
-    .url(tx::ENCODE);
-```
-
-Available `tx` markers:
-- **Operations**: `ENCODE`, `DECODE`, `ESCAPE`, `UNESCAPE`
-- **Targets**: `QUOTES`, `HTML`, `UNICODE`, `URL`, `BASE64`, `ALL`
-- **Case**: `UPPER`, `LOWER`
-
-## 🛠️ Common Operations
-
-### Quote Management
-
-```rust
-let tokens = transform(data)
-    .double_quotes()    // Convert to double quotes
-    .single_quotes()    // Convert to single quotes
-    .swap_quotes()      // Toggle quote style
-    .strip_quotes()     // Remove all quotes
-    .add_quotes('"');   // Add quotes to unquoted values
-```
-
-### Security & Masking
-
-```rust
-let safe_tokens = transform(sensitive_data)
-    .mask_sensitive()   // Hide passwords, secrets, keys, tokens
-    .esc(tx::HTML)      // Escape HTML entities
-    .esc(tx::ALL);      // Escape all special characters
-```
-
-### Namespace Operations
-
-```rust
-let updated = transform(tokens)
-    .rename_namespace("old_ns", "new_ns")
-    .rename_key("old_key", "new_key")
-    .prefix_namespaces("prefix");
-```
-
-### Format Control
-
-```rust
-let formatted = transform(data)
-    .compact()      // Remove spaces: "a=1;b=2"
-    .expand()       // Add spaces: "a=1; b=2"
-    .multiline()    // Split to multiple lines
-    .singleline()   // Merge to single line
-    .sort();        // Sort tokens alphabetically
-```
-
-## 📚 API Documentation
-
-### TokenStream Methods
-
-| Method | Purpose | Example |
-|--------|---------|---------|
-| `translate(from, to)` | Replace all occurrences | `.translate("=", ":")` |
-| `regex(pattern, replacement)` | Regex substitution | `.regex(r"\d+", "NUM")` |
-| `mask_sensitive()` | Hide sensitive values | Masks passwords, tokens, keys |
-| `validate()` | Check parseability | Returns `bool` |
-| `parse(mode)` | Parse to TokenBucket | `.parse(BucketMode::Strict)` |
-| `custom(fn)` | Custom RSB operation | `.custom(\|s\| s.sed("a", "b"))` |
-
-### Built-in Streamables
-
-| Streamable | Input | Output | Purpose |
-|------------|-------|--------|---------|
-| `TokenCount` | Token stream | Count | Number of tokens |
-| `ExtractKeys` | Token stream | Key list | All token keys |
-| `ExtractValues` | Token stream | Value list | All token values |
-| `FilterTokens` | Token stream + pattern | Filtered stream | Tokens matching pattern |
-| `ExtractNamespaces` | Token stream | Namespace list | All unique namespaces |
-
-## 🚀 Advanced Examples
-
-### Configuration Processing Pipeline
-
-```rust
-use xstream::prelude::*;
-
-fn process_config(raw_config: &str) -> Result<String, Box<dyn std::error::Error>> {
-    let processed = transform(raw_config)
-        // Security first
-        .mask_sensitive()
-        // Standardize format
-        .double_quotes()
-        .expand()
-        // Organize structure
-        .rename_namespace("app", "application")
-        .sort()
-        // Validate result
-        .validate()
-        .then(|valid| if valid { Ok(()) } else { Err("Invalid token format") })?
-        .to_string();
-    
-    Ok(processed)
-}
-```
-
-### Multi-Stage Data Transformation
-
-```rust
-// Stage 1: Clean and structure
-let stage1 = transform(messy_data)
-    .strip_quotes()
-    .translate_many(&[("\\n", ""), ("\\t", "")])
-    .add_quotes('"');
-
-// Stage 2: Enhance and validate
-let stage2 = stage1
-    .prefix_namespaces("cleaned")
-    .upper()
-    .compact();
-
-// Stage 3: Export formats
-let json_ready = stage2.clone().esc(tx::QUOTES);
-let xml_ready = stage2.esc(tx::HTML);
-```
-
-### Custom Streamable Integration
-
-```rust
-// Combine built-in and custom operations
-let analysis = stream!(string: data)
-    .streamable!(TokenCount)            // Count tokens
-    .map_lines(|count| format!("Found {} tokens", count))
-    .chain(
-        stream!(string: data)
-        .streamable!(ExtractKeys)       // Get keys
-        .map_lines(|keys| format!("Keys: {}", keys))
-    )
-    .to_string();
-```
-
-## 🔍 RSB Integration
-
-XStream is built on the powerful [RSB (REBEL Stream Builder)](https://github.com/oodx/rebel) framework, providing:
-
-- **Industrial-strength streaming**: Battle-tested performance
-- **Composable operations**: Mix and match processing components
-- **Memory efficiency**: Process large streams without loading everything into memory
-- **Error handling**: Robust error propagation and recovery
-- **Extensibility**: Easy to add custom streamables and operations
-
-### Direct RSB Access
-
-```rust
-use rsb::prelude::*;
-use xstream::prelude::*;
-
-// Combine XStream tokens with RSB power
-let result = stream!(string: token_data)
-    // XStream tokenization
-    .streamable!(ExtractValues)
-    // Raw RSB processing
-    .map_lines(|line| line.to_uppercase())
-    .filter_lines(|line| line.len() > 3)
-    .take_lines(10)
-    // Back to XStream
-    .pipe_to(|values| transform(values).add_quotes('"').to_string())
-    .to_string();
-```
-
-## 🤝 Contributing
-
-We welcome contributions! Here's how to get started:
-
-1. **Fork the repository**
-2. **Create a feature branch**: `git checkout -b feature-amazing-transform`
-3. **Make your changes** and add tests
-4. **Run the test suite**: `cargo test`
-5. **Check formatting**: `cargo fmt`
-6. **Submit a pull request**
-
-### Development Setup
+### Build from Source
 
 ```bash
 # Clone the repository
-git clone https://github.com/oodx/xstream.git
+git clone <repository-url>
 cd xstream
 
-# Install dependencies
-cargo build
+# Build the project
+cargo build --release
 
-# Run tests
+# Run tests to verify installation (all 65 tests should pass)
 cargo test
 
-# Run examples
-cargo run --example basic_usage
+# Try the new integration tools
+cargo run --example integration_demo
+
+# Try a quick demonstration
+cargo run --bin xstream-driver help
 ```
 
-### Code Guidelines
+### Available Binaries
 
-- Follow Rust conventions and idioms
-- Add tests for new functionality
-- Update documentation for API changes
-- Use meaningful commit messages
-- Ensure all tests pass before submitting
+XStream provides several specialized tools:
 
-## 🧪 Testing
+- **`xstream-driver`**: Visual ceremony demonstrations
+- **`xstream-gen`**: Token stream generator for testing
+- **`xstream-color-gen`**: Specialized color stream generator
+- **`pretty`**: Stream pretty-printing utility
 
-Run the comprehensive test suite:
+## 🚀 Quick Start
+
+### Easy Integration with XStreamAdapter
+
+```rust
+use xstream::{XStreamAdapter, MergeStrategy};
+
+// Create an adapter for easy operations
+let mut adapter = XStreamAdapter::new();
+
+// Convert JSON to token stream
+let json = r#"{"host": "localhost", "port": 8080}"#;
+let stream = adapter.from_json(json).unwrap();
+// Result: host="localhost"; port="8080"
+
+// Process with fluent API
+let input = "ui:theme=\"dark\"; ui:size=\"large\"; db:host=\"localhost\"";
+let result = adapter.process_stream(input)
+    .fork_by(&["ui", "db"])
+    .gate_min_tokens(1)
+    .merge_with(MergeStrategy::Concat)
+    .collect();
+```
+
+### User-Friendly Macros
+
+```rust
+use xstream::{fork_colored, pipeline, generate_stream};
+
+// Fork with automatic colors
+let input = "ui:btn=\"click\"; db:host=\"localhost\"";
+let colored_streams = fork_colored!(input, "ui", "db");
+
+// Pipeline operations
+let result = pipeline!(input => fork(["ui", "db"]) => gate(min_tokens: 1));
+
+// Generate test data
+let test_streams = generate_stream!(namespaces: ["ui", "db"], tokens_per_ns: 3);
+```
+
+### Basic Stream Operations (Advanced)
+
+```rust
+use xstream::xstream::{
+    fork::{Fork, ForkAll},
+    merge::{Merge, MergeStrategy},
+    gate::{Gate, GateCondition}
+};
+use rsb::prelude::*;
+
+// Create a mixed stream
+let input = "ui:btn=\"click\"; db:host=\"localhost\"; ui:theme=\"dark\"; api:status=\"ok\"";
+
+// Fork by namespace
+let forked = input.stream_apply(Fork, vec!["ui".to_string(), "db".to_string()]);
+
+// Gate by minimum tokens
+let gated = forked.stream_apply(Gate, GateCondition::MinTokens(2));
+
+// Merge results
+let merged = gated.stream_apply(Merge, MergeStrategy::Concat);
+```
+
+### Visual Stream Processing
+
+The heart of XStream is its visual ceremony system that demonstrates operations with color-coded tokens:
 
 ```bash
-# Unit tests
-cargo test
+# Run all visual demonstrations
+cargo run --bin xstream-driver all
 
-# Integration tests
-cargo test --test integration
-
-# Documentation tests
-cargo test --doc
-
-# Run with coverage
-cargo tarpaulin --out html
+# Specific operation demos
+cargo run --bin xstream-driver fork
+cargo run --bin xstream-driver merge
+cargo run --bin xstream-driver gate
+cargo run --bin xstream-driver pipeline
 ```
+
+## 🎭 Visual Testing System
+
+### Driver Ceremonies
+
+XStream includes sophisticated visual demonstrations called "ceremonies" that showcase operations with color-coded output:
+
+**Fork Ceremonies**: Stream splitting demonstrations
+- Basic namespace separation
+- Automatic discovery with `ForkAll`
+- Selective namespace filtering
+- Deep nested namespace handling
+- Empty namespace graceful handling
+
+**Merge Ceremonies**: Stream combination strategies
+- Concatenation preserving origin colors
+- Interleaved round-robin merging
+- Duplicate detection and removal
+- Weighted priority merging
+- Empty stream graceful handling
+
+**Gate Ceremonies**: Flow control demonstrations
+- Minimum/maximum token filtering
+- Namespace requirement validation
+- Multi-stream synchronization
+- Value-based content filtering
+- Rate limiting and throughput control
+
+**Pipeline Ceremonies**: Multi-stage transformations
+- Fork → Gate → Merge chains
+- Error recovery with backup streams
+- Conditional routing by priority
+- Feedback loop processing
+
+### Color System
+
+XStream uses a sophisticated color system for visual tracking:
+
+```rust
+// Colors travel with tokens through operations
+let red_ui_token = create_colored_token("ui", "btn", "click01", "red");
+let blue_db_token = create_colored_token("db", "host", "local01", "blue");
+
+// After merge, you can still see origin by color:
+// ui tokens remain red ■, db tokens remain blue ■
+```
+
+## 🧪 Stream Generation
+
+### XStream Generator (`xstream-gen`)
+
+Generate test streams for development and testing:
+
+```bash
+# Generate colored streams by namespace
+cargo run --bin xstream-gen colored --namespaces ui,db,api --tokens 3
+
+# Create fork-ready streams
+cargo run --bin xstream-gen pattern --pattern fork --complexity medium
+
+# Generate merge-ready streams  
+cargo run --bin xstream-gen pattern --pattern merge --complexity simple
+```
+
+### Color Generator (`xstream-color-gen`)
+
+Specialized color stream generation:
+
+```bash
+# Rainbow theme with 8 tokens
+cargo run --bin xstream-color-gen theme --theme rainbow --count 8
+
+# Namespace-colored streams with symbols
+cargo run --bin xstream-color-gen namespace --namespaces ui,db --symbols true
+
+# Color gradients for pipeline visualization
+cargo run --bin xstream-color-gen gradient --start red --end blue --steps 5
+```
+
+## 🧪 Testing Suite
+
+### Automated Test Scripts
+
+XStream includes comprehensive testing scripts in the `bin/` directory:
+
+```bash
+# Run complete test suite
+./bin/test.sh all
+
+# Test specific ceremonies
+./bin/test.sh fork
+./bin/test.sh merge --verbose
+
+# Individual showcase scripts
+./bin/showcase-fork.sh
+./bin/showcase-merge.sh
+./bin/showcase-pipeline.sh
+```
+
+### Test Script Features
+
+- **Colored Output**: Status indicators with visual feedback
+- **Unit Test Integration**: Cargo test execution with filtering
+- **Ceremony Validation**: Visual demonstration verification  
+- **Verbose Mode**: Detailed error reporting for debugging
+- **Pass/Fail Tracking**: Comprehensive result summaries
+
+## ⚡ RSB Integration
+
+XStream is built on the RSB (Rebel) framework, providing:
+
+- **Stream Apply Pattern**: Consistent `.stream_apply(Operation, Parameters)` interface
+- **Streamable Trait**: Universal stream processing capabilities
+- **Error Handling**: Robust error management through RSB patterns
+- **Macro System**: Simplified operation definitions
+
+```rust
+// RSB integration examples
+use rsb::prelude::*;
+
+// The streamable trait enables consistent operations
+let result = "data".stream_apply(Transform, params);
+
+// Fork macro for easy namespace splitting  
+let forked = fork!(input => "ui", "db", "api");
+
+// Merge macro with strategy selection
+let merged = merge!(stream1, stream2; strategy = MergeStrategy::Interleave);
+```
+
+## 🔗 Easy Integration
+
+### JSON/CSV Integration
+
+XStream now provides seamless integration with common data formats:
+
+```rust
+use xstream::XStreamAdapter;
+
+let mut adapter = XStreamAdapter::new();
+
+// JSON to token stream
+let json = r#"{
+  "host": "localhost",
+  "port": 8080,
+  "db": {
+    "user": "admin",
+    "pass": "secret"
+  }
+}"#;
+
+let stream = adapter.from_json(json).unwrap();
+// Result: host="localhost"; port="8080"; db:user="admin"; db:pass="secret"
+
+// Convert back to JSON
+let json_back = adapter.to_json(&stream).unwrap();
+
+// CSV to token stream
+let csv = "name,age,city\nAlice,25,NYC\nBob,30,SF";
+let csv_stream = adapter.from_csv(csv).unwrap();
+// Result: row0:name="Alice"; row0:age="25"; row0:city="NYC"; row1:name="Bob"; row1:age="30"; row1:city="SF"
+```
+
+### XStreamAdapter Features
+
+```rust
+// Split streams by namespace with automatic colors
+let processed = adapter.split_and_process(input, &["ui", "db"]);
+
+// Merge with filtering
+let streams = &["a=\"1\"", "b=\"2\"; c=\"3\"", "d=\"4\"; e=\"5\"; f=\"6\""];
+let merged = adapter.merge_and_filter(streams, 2); // Only streams with 2+ tokens
+
+// Pipeline builder
+let pipeline = XStreamAdapter::pipeline()
+    .fork(&["ui", "db"])
+    .gate(1)
+    .merge(MergeStrategy::Concat);
+
+let result = pipeline.execute(input).unwrap();
+```
+
+## 🏗️ User-Friendly Macros
+
+### Stream Processing Macros
+
+```rust
+use xstream::{xstream, fork_colored, pipeline, generate_stream};
+
+let input = "ui:theme=\"dark\"; db:host=\"localhost\"";
+
+// Fluent API macro
+let result = xstream!(input)
+    .fork_by(&["ui", "db"])
+    .merge_with(MergeStrategy::Concat)
+    .collect();
+
+// Fork with automatic colors
+let colored = fork_colored!(input, "ui", "db");
+
+// Pipeline operations
+let pipeline_result = pipeline!(
+    input => fork(["ui", "db"]) 
+          => gate(min_tokens: 1) 
+          => merge(MergeStrategy::Interleave)
+);
+```
+
+### Testing Utilities
+
+```rust
+use xstream::{test_stream, generate_stream, validate_stream};
+
+// Generate test data
+let test_data = generate_stream!(
+    namespaces: ["ui", "db", "api"], 
+    tokens_per_ns: 3, 
+    colors: true
+);
+
+// Test stream operations
+let result = test_stream!(input, "expected_content", |s| {
+    s.fork_by(&["ui"]).merge_with(MergeStrategy::Sort)
+});
+result.assert_passed();
+
+// Validate stream format
+validate_stream!("key=\"value\"; other=\"data\"").unwrap();
+```
+
+### Pipeline Builder Macro
+
+```rust
+// Build reusable pipelines
+let pipeline = build_pipeline!(
+    fork => ["ui", "db", "log"];
+    gate => 1;
+    merge => MergeStrategy::Concat
+);
+
+let result = pipeline.execute(input).unwrap();
+
+// Conditional processing
+let result = process_if!(
+    stream, 
+    has_namespace("ui") => fork(["ui", "ux"]) => merge(MergeStrategy::Sort)
+);
+```
+
+## 📊 Testing Your Code
+
+### Built-in Test Helpers
+
+```rust
+use xstream::{XStreamAdapter, test_stream, generate_stream};
+
+// Generate test streams for different scenarios
+let test_streams = XStreamAdapter::test_streams(&["ui", "db"], 3);
+for stream in test_streams {
+    println!("Test stream: {}", stream);
+}
+
+// Test with expected results
+let test_result = test_stream!("ui:theme=\"dark\"", "theme", |processor| {
+    processor.fork_by(&["ui"]).collect()
+});
+
+if test_result.passed {
+    println!("✓ Test passed!");
+} else {
+    test_result.print_result(); // Colored output
+}
+
+// Validate stream format
+match validate_stream!("invalid_format") {
+    Ok(()) => println!("Valid stream"),
+    Err(e) => println!("Invalid: {}", e),
+}
+```
+
+### Integration Testing
+
+```rust
+// Test JSON roundtrip
+let mut adapter = XStreamAdapter::new();
+let original_json = r#"{"test": "value"}"#;
+let stream = adapter.from_json(original_json).unwrap();
+let converted_back = adapter.to_json(&stream).unwrap();
+
+// Test CSV processing
+let csv = "id,name\n1,Alice\n2,Bob";
+let csv_stream = adapter.from_csv(csv).unwrap();
+assert!(csv_stream.contains("row0:id=\"1\""));
+
+// Test pipeline with real data
+let pipeline = XStreamAdapter::pipeline()
+    .fork(&["row0", "row1"])
+    .gate(2)  // Only rows with 2+ fields
+    .merge(MergeStrategy::Concat);
+
+let result = pipeline.execute(&csv_stream).unwrap();
+```
+
+## 📖 Examples
+
+### 1. Web Application Stream Processing
+
+```rust
+// Modern approach with adapter
+let mut adapter = XStreamAdapter::new();
+let requests = "ui:click=\"btn1\"; api:req=\"/data\"; ui:hover=\"menu\"; db:query=\"users\"";
+
+// Process with fluent API
+let result = adapter.process_stream(requests)
+    .fork_by(&["ui", "api", "db"])
+    .gate_min_tokens(2)  // Only namespaces with high activity
+    .merge_with(MergeStrategy::Concat)
+    .collect();
+
+// Or use macros
+let quick_result = pipeline!(
+    requests => fork(["ui", "api", "db"]) 
+             => gate(min_tokens: 2) 
+             => merge(MergeStrategy::Concat)
+);
+
+// Traditional approach (still available)
+let by_component = requests.stream_apply(ForkAll, ());
+let filtered = by_component.stream_apply(Gate, GateCondition::MinTokens(2));
+let ready = filtered.stream_apply(Merge, MergeStrategy::Concat);
+```
+
+### 2. Data Pipeline with Error Recovery
+
+```rust
+// JSON data pipeline
+let mut adapter = XStreamAdapter::new();
+let json_data = r#"{
+  "input": {"file": "data.csv", "size": "1MB"},
+  "validate": {"schema": "pass", "rows": "1000"},
+  "transform": {"clean": "ok", "format": "json"}
+}"#;
+
+let stream = adapter.from_json(json_data).unwrap();
+
+// Pipeline with error handling
+let pipeline = XStreamAdapter::pipeline()
+    .fork(&["input", "validate", "transform"])
+    .gate(2)  // Ensure each stage has required data
+    .merge(MergeStrategy::Dedupe);
+
+match pipeline.execute(&stream) {
+    Ok(result) => println!("Pipeline success: {}", result),
+    Err(e) => println!("Pipeline error: {}", e),
+}
+
+// Traditional approach
+let validated = stream.stream_apply(Gate, GateCondition::RequireNamespace("validate".to_string()));
+let stage1 = validated.stream_apply(Fork, vec!["transform".to_string()]);
+let final_result = stage1.stream_apply(Merge, MergeStrategy::Dedupe);
+```
+
+### 3. Real-time System Monitoring
+
+```rust
+// CSV metrics from monitoring system
+let csv_metrics = "component,metric,value\ncpu,usage,75\nmem,free,2GB\ndisk,io,high\ncpu,temp,65C";
+
+let mut adapter = XStreamAdapter::new();
+let stream = adapter.from_csv(csv_metrics).unwrap();
+
+// Group and filter critical metrics
+let critical = adapter.split_and_process(&stream, &["row0", "row1", "row2", "row3"]);
+let filtered = adapter.merge_and_filter(&critical.iter().map(|s| s.as_str()).collect::<Vec<_>>(), 2);
+
+// Or use pipeline macro
+let alerts = pipeline!(
+    stream => fork(["row0", "row1", "row2", "row3"]) 
+           => gate(min_tokens: 2) 
+           => merge(MergeStrategy::Interleave)
+);
+
+println!("Alert stream: {}", alerts);
+```
+
+## 🛠 Development
+
+### Project Structure
+
+```
+xstream/
+├── src/
+│   ├── lib.rs              # Library root with re-exports
+│   ├── adapter.rs          # XStreamAdapter for easy integration
+│   ├── macros.rs           # User-friendly macros
+│   ├── driver.rs           # Visual ceremony driver
+│   ├── pretty.rs           # Stream formatting utility
+│   ├── colors.rs           # Color system implementation
+│   ├── bin/                # Binary tools
+│   │   ├── xstream-gen.rs     # Stream generator
+│   │   └── xstream-color-gen.rs # Color generator
+│   └── xstream/            # Core operations
+│       ├── mod.rs             # Module definitions
+│       ├── types/             # Type definitions
+│       ├── fork.rs           # Fork operations
+│       ├── merge.rs          # Merge strategies
+│       ├── gate.rs           # Gate controls
+│       ├── real_fork.rs      # Advanced fork implementations
+│       ├── real_gate.rs      # Advanced gate implementations
+│       └── real_merge.rs     # Advanced merge implementations
+├── examples/
+│   └── integration_demo.rs # Integration tools demonstration
+├── bin/                    # Test and showcase scripts
+│   ├── test.sh              # Main test suite
+│   ├── run-all-tests.sh     # Complete test runner
+│   ├── showcase-*.sh        # Individual demos
+│   └── test_clean.sh        # Cleanup utilities
+└── Cargo.toml              # Dependencies and binary definitions
+```
+
+### Contributing
+
+1. **Fork the repository** and create your feature branch
+2. **Add tests** for new functionality using the ceremony pattern
+3. **Run the test suite**: `./bin/test.sh all --verbose`
+4. **Add visual demonstrations** to the driver if applicable
+5. **Update documentation** and include examples
+6. **Submit a pull request** with clear description
+
+### Adding New Operations
+
+```rust
+// 1. Define your operation struct
+pub struct CustomOperation;
+
+// 2. Implement StreamApply trait
+impl StreamApply<CustomParams> for CustomOperation {
+    fn stream_apply(&self, input: &str, params: CustomParams) -> String {
+        // Your operation logic here
+    }
+}
+
+// 3. Add ceremony demonstrations in driver.rs
+fn ceremony_custom_operations() {
+    print_section_header("CUSTOM OPERATIONS - Your Description");
+    // Visual test cases here
+}
+
+// 4. Add unit tests
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_custom_operation() {
+        // Test cases here
+    }
+}
+```
+
+### Running Development Tools
+
+```bash
+# Format code
+cargo fmt
+
+# Check for issues
+cargo clippy
+
+# Run specific test categories
+cargo test fork_tests
+cargo test merge_tests  
+cargo test gate_tests
+
+# Generate documentation
+cargo doc --open
+
+# Build all binaries
+cargo build --bins
+
+# Profile performance
+cargo build --release
+cargo run --release --bin xstream-driver all
+```
+
+## 📊 Performance
+
+XStream is designed for efficiency:
+
+- **Zero-copy** string operations where possible
+- **Lazy evaluation** of stream transformations  
+- **Memory-efficient** token parsing and manipulation
+- **Parallel-ready** operation design (futures compatibility)
+- **Minimal allocations** in hot paths
+
+Performance testing can be done with:
+
+```bash
+# Release build for performance testing
+cargo build --release
+
+# Time complex ceremonies
+time cargo run --release --bin xstream-driver all
+
+# Memory usage profiling
+valgrind cargo run --bin xstream-driver pipeline
+```
+
+## 🎨 Visual Design Philosophy
+
+XStream follows a "visual-first" approach to stream processing:
+
+- **Colors preserve identity**: Tokens maintain origin colors through operations
+- **Symbols add meaning**: Block symbols (■▲●♦) enhance visual tracking  
+- **Ceremonies demonstrate**: Each operation has comprehensive visual tests
+- **ASCII art flows**: Clear visual representation of data transformation
+- **Status colors**: Success ✓, Error ✗, Warning ⚠, Info ℹ indicators
+
+This makes XStream excellent for:
+- **Learning stream processing concepts**
+- **Debugging complex data flows**  
+- **Demonstrating system behavior**
+- **Teaching functional programming patterns**
+
+## 🔗 Dependencies
+
+- **RSB Framework**: Core stream processing capabilities via Git
+- **Serde JSON**: JSON serialization/deserialization for adapter integration
+- **Clap 4.0**: Command-line argument parsing for generators
+- **Base64**: Encoding utilities for token serialization
+- **URL Encoding**: Safe string handling for web contexts  
+- **Regex**: Pattern matching for advanced stream operations
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- Built on the powerful [RSB framework](https://github.com/oodx/rebel)
-- Inspired by the need for better token stream processing
-- Thanks to all contributors and the Rust community
+XStream is built on the RSB framework. Please refer to the RSB repository for licensing terms and conditions.
 
 ---
 
-**Ready to revolutionize your token processing?** Get started with XStream today! 🚀
-
-*For questions, issues, or feature requests, please [open an issue](https://github.com/oodx/xstream/issues) on GitHub.*
+**Ready to start streaming?** Begin with `cargo run --bin xstream-driver help` to explore the visual ceremonies and see XStream in action! 🎉

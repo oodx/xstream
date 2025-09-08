@@ -23,17 +23,36 @@ impl Streamable for Merge {
 
 /// Basic merge - concatenate streams in order
 pub fn merge_concat(streams: &[&str]) -> String {
-    let valid_streams: Vec<&str> = streams
-        .iter()
-        .filter(|s| is_token_streamable(s))
-        .copied()
-        .collect();
+    let mut all_tokens = Vec::new();
     
-    if valid_streams.is_empty() {
+    for stream in streams {
+        if stream.trim().is_empty() {
+            continue;
+        }
+        
+        // Handle RSB format "namespace: tokens" or plain tokens
+        let tokens_str = if let Some((_, tokens)) = stream.split_once(": ") {
+            tokens
+        } else if is_token_streamable(stream) {
+            stream
+        } else {
+            continue; // Skip invalid streams
+        };
+        
+        // Split tokens and add to collection
+        for token in tokens_str.split(';') {
+            let token = token.trim();
+            if !token.is_empty() {
+                all_tokens.push(token);
+            }
+        }
+    }
+    
+    if all_tokens.is_empty() {
         return String::new();
     }
     
-    valid_streams.join("; ")
+    all_tokens.join("; ")
 }
 
 /// Merge with strategy
@@ -100,13 +119,21 @@ pub fn merge_with_strategy(streams: &[&str], strategy: MergeStrategy) -> String 
 pub fn merge_interleave(streams: &[&str]) -> String {
     let token_lists: Vec<Vec<&str>> = streams
         .iter()
-        .filter(|s| is_token_streamable(s))
-        .map(|s| {
+        .filter_map(|s| {
             // Handle RSB format "namespace: tokens" or plain tokens
-            if let Some((_, tokens)) = s.split_once(": ") {
-                tokens.split(';').map(|t| t.trim()).filter(|t| !t.is_empty()).collect()
+            let tokens_str = if let Some((_, tokens)) = s.split_once(": ") {
+                tokens
+            } else if is_token_streamable(s) {
+                s
             } else {
-                s.split(';').map(|t| t.trim()).filter(|t| !t.is_empty()).collect()
+                return None; // Skip invalid streams
+            };
+            
+            // Only create token list if the tokens part is valid
+            if is_token_streamable(tokens_str) {
+                Some(tokens_str.split(';').map(|t| t.trim()).filter(|t| !t.is_empty()).collect())
+            } else {
+                None
             }
         })
         .collect();
@@ -189,14 +216,17 @@ pub fn merge_sorted(streams: &[&str]) -> String {
     let mut all_tokens = Vec::new();
     
     for stream in streams {
-        if !is_token_streamable(stream) {
+        if stream.trim().is_empty() {
             continue;
         }
         
+        // Handle RSB format "namespace: tokens" or plain tokens
         let tokens_str = if let Some((_, tokens)) = stream.split_once(": ") {
             tokens
-        } else {
+        } else if is_token_streamable(stream) {
             stream
+        } else {
+            continue; // Skip invalid streams
         };
         
         for token in tokens_str.split(';') {
@@ -294,19 +324,19 @@ macro_rules! merge {
     // merge!(stream1, stream2, stream3)
     ($($stream:expr),+) => {{
         let streams = vec![$($stream),+];
-        $crate::xstream::real_merge::merge_concat(&streams)
+        $crate::xstream::merge::merge_concat(&streams)
     }};
     
     // merge!(strategy: Interleave, stream1, stream2, stream3)
     (strategy: $strategy:expr, $($stream:expr),+) => {{
         let streams = vec![$($stream),+];
-        $crate::xstream::real_merge::merge_with_strategy(&streams, $strategy)
+        $crate::xstream::merge::merge_with_strategy(&streams, $strategy)
     }};
     
     // merge!(policy: KeepFirst, stream1, stream2, stream3)
     (policy: $policy:expr, $($stream:expr),+) => {{
         let streams = vec![$($stream),+];
-        $crate::xstream::real_merge::merge_with_collision_policy(&streams, $policy)
+        $crate::xstream::merge::merge_with_collision_policy(&streams, $policy)
     }};
 }
 

@@ -1,81 +1,99 @@
 // XStream Generator Binary
 // Generate colored token streams for testing and demonstrations
-// Usage: cargo run --bin xstream-gen colored --namespaces ui,db,api --tokens 5
+// Usage: cargo run --bin xstream-gen colored --namespaces=ui,db,api --tokens=5
 
-use clap::{Parser, Subcommand};
+use rsb::prelude::*;
 use std::collections::HashMap;
 
-#[derive(Parser)]
-#[command(name = "xstream-gen")]
-#[command(about = "XStream token stream generator for testing and demonstrations")]
-struct Cli {
-    #[command(subcommand)]
-    command: Commands,
-}
-
-#[derive(Subcommand)]
-enum Commands {
-    /// Generate colored token streams
-    Colored {
-        /// Comma-separated list of namespaces (e.g., ui,db,api)
-        #[arg(long, default_value = "ui,db,api")]
-        namespaces: String,
-        
-        /// Number of tokens per namespace
-        #[arg(long, default_value = "3")]
-        tokens: usize,
-        
-        /// Output format (stream|fork|merge)
-        #[arg(long, default_value = "stream")]
-        format: String,
-        
-        /// Use color block symbols
-        #[arg(long, default_value = "false")]
-        symbols: bool,
-    },
-    
-    /// Generate pre-colored test streams
-    PreColored {
-        /// Total number of tokens to generate
-        #[arg(long, default_value = "10")]
-        count: usize,
-        
-        /// Color theme (rainbow|mono|warm|cool)
-        #[arg(long, default_value = "rainbow")]
-        theme: String,
-    },
-    
-    /// Generate streams for specific patterns (fork-ready, merge-ready, etc.)
-    Pattern {
-        /// Pattern type (fork|merge|gate|pipeline)
-        #[arg(long, required = true)]
-        pattern: String,
-        
-        /// Complexity level (simple|medium|complex)
-        #[arg(long, default_value = "medium")]
-        complexity: String,
-    },
-}
-
 fn main() {
-    let cli = Cli::parse();
+    let args = bootstrap!();
     
-    match &cli.command {
-        Commands::Colored { namespaces, tokens, format, symbols } => {
-            let ns_list: Vec<&str> = namespaces.split(',').collect();
-            let result = generate_colored_stream(&ns_list, *tokens, format, *symbols);
-            println!("{}", result);
-        }
-        Commands::PreColored { count, theme } => {
-            let result = generate_pre_colored_tokens(*count, theme);
-            println!("{}", result);
-        }
-        Commands::Pattern { pattern, complexity } => {
-            let result = generate_pattern_stream(pattern, complexity);
-            println!("{}", result);
-        }
+    if args.len() < 2 {
+        let empty_args = vec![];
+        show_help(Args::new(&empty_args));
+        return;
     }
+    
+    let result = match args[1].as_str() {
+        "colored" => handle_colored_command(Args::new(&args)),
+        "precolored" => handle_precolored_command(Args::new(&args)),
+        "pattern" => handle_pattern_command(Args::new(&args)),
+        "help" => show_help(Args::new(&args)),
+        _ => {
+            println!("Unknown command: {}. Use 'help' for usage information.", args[1]);
+            let empty_args = vec![];
+            show_help(Args::new(&empty_args))
+        }
+    };
+    std::process::exit(result);
 }
+
+fn show_help(_args: Args) -> i32 {
+    println!("XStream token stream generator for testing and demonstrations");
+    println!("");
+    println!("USAGE:");
+    println!("    xstream-gen <COMMAND> [OPTIONS]");
+    println!("");
+    println!("COMMANDS:");
+    println!("    colored     Generate colored token streams");
+    println!("    precolored  Generate pre-colored test streams");
+    println!("    pattern     Generate streams for specific patterns (fork-ready, merge-ready, etc.)");
+    println!("    help        Show this help message");
+    println!("");
+    println!("COLORED OPTIONS:");
+    println!("    --namespaces=<ns1,ns2>  Comma-separated list of namespaces (default: ui,db,api)");
+    println!("    --tokens=<N>           Number of tokens per namespace (default: 3)");
+    println!("    --format=<FORMAT>      Output format: stream|fork|merge (default: stream)");
+    println!("    --symbols=<BOOL>       Use color block symbols (default: false)");
+    println!("");
+    println!("PRECOLORED OPTIONS:");
+    println!("    --count=<N>           Total number of tokens to generate (default: 10)");
+    println!("    --theme=<THEME>       Color theme: rainbow|mono|warm|cool (default: rainbow)");
+    println!("");
+    println!("PATTERN OPTIONS:");
+    println!("    --pattern=<PATTERN>   Pattern type: fork|merge|gate|pipeline (required)");
+    println!("    --complexity=<LEVEL>  Complexity level: simple|medium|complex (default: medium)");
+    0
+}
+
+fn handle_colored_command(mut args: Args) -> i32 {
+    let namespaces = args.get_kv("namespaces").unwrap_or("ui,db,api".to_string());
+    let tokens = args.get_kv("tokens").unwrap_or("3".to_string()).parse::<usize>().unwrap_or(3);
+    let format = args.get_kv("format").unwrap_or("stream".to_string());
+    let symbols = args.get_kv("symbols").unwrap_or("false".to_string()) == "true";
+    
+    let ns_list: Vec<&str> = namespaces.split(',').collect();
+    let result = generate_colored_stream(&ns_list, tokens, &format, symbols);
+    println!("{}", result);
+    0
+}
+
+fn handle_precolored_command(mut args: Args) -> i32 {
+    let count = args.get_kv("count").unwrap_or("10".to_string()).parse::<usize>().unwrap_or(10);
+    let theme = args.get_kv("theme").unwrap_or("rainbow".to_string());
+    
+    let result = generate_pre_colored_tokens(count, &theme);
+    println!("{}", result);
+    0
+}
+
+fn handle_pattern_command(mut args: Args) -> i32 {
+    let pattern = match args.get_kv("pattern") {
+        Some(p) => p,
+        None => {
+            println!("Error: --pattern is required for pattern command");
+            println!("Available patterns: fork, merge, gate, pipeline");
+            return 1;
+        }
+    };
+    let complexity = args.get_kv("complexity").unwrap_or("medium".to_string());
+    
+    let result = generate_pattern_stream(&pattern, &complexity);
+    println!("{}", result);
+    0
+}
+
+// Removed parse_arg function - using RSB Args methods instead
 
 fn generate_colored_stream(namespaces: &[&str], tokens_per_ns: usize, format: &str, symbols: bool) -> String {
     let mut result = Vec::new();

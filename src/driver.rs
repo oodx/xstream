@@ -4,9 +4,9 @@
 // └─────────────────────────────────────────────────────────────────┘
 
 use rsb::prelude::*;
-use xstream::xstream::real_fork::{Fork, ForkAll};
-use xstream::xstream::real_merge::{Merge, MergeStrategy};  
-use xstream::xstream::real_gate::{Gate, GateCondition, SyncGate};
+use xstream::xstream::fork::{Fork, ForkAll};
+use xstream::xstream::merge::{Merge, MergeStrategy};  
+use xstream::xstream::gate::{Gate, GateCondition, SyncGate};
 use xstream::colors::{colorize, get_color, pre_color_stream, RESET};
 
 fn main() {

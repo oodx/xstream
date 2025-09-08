@@ -189,7 +189,7 @@ fn generate_pattern_stream(pattern: &str, complexity: &str) -> String {
 fn generate_fork_pattern(complexity: &str) -> String {
     match complexity {
         "simple" => {
-            "ui:btn=\"click\"; ui:theme=\"dark\"; db:host=\"localhost\"; db:port=\"3306\"; api:status=\"ok\""
+            "ui:btn=\"click\"; ui:theme=\"dark\"; db:host=\"localhost\"; db:port=\"3306\"; api:status=\"ok\"".to_string()
         }
         "complex" => {
             let namespaces = vec!["ui.widgets", "ui.layout", "db.conn", "db.query", "api.auth", "api.data", "log.info", "log.error"];
@@ -204,15 +204,15 @@ fn generate_fork_pattern(complexity: &str) -> String {
             tokens.join("; ")
         }
         _ => { // medium
-            "ui:click=\"btn1\"; ui:hover=\"btn2\"; ui:focus=\"input1\"; db:query=\"users\"; db:conn=\"pool1\"; api:get=\"/data\"; api:post=\"/submit\"; log:level=\"info\""
+            "ui:click=\"btn1\"; ui:hover=\"btn2\"; ui:focus=\"input1\"; db:query=\"users\"; db:conn=\"pool1\"; api:get=\"/data\"; api:post=\"/submit\"; log:level=\"info\"".to_string()
         }
-    }.to_string()
+    }
 }
 
 fn generate_merge_pattern(complexity: &str) -> String {
     match complexity {
         "simple" => {
-            "ui: ui:btn=\"click\"; ui:theme=\"dark\"\ndb: db:host=\"localhost\"; db:port=\"3306\"\napi: api:status=\"ok\"; api:version=\"v1\""
+            "ui: ui:btn=\"click\"; ui:theme=\"dark\"\ndb: db:host=\"localhost\"; db:port=\"3306\"\napi: api:status=\"ok\"; api:version=\"v1\"".to_string()
         }
         "complex" => {
             let streams = vec![
@@ -223,18 +223,18 @@ fn generate_merge_pattern(complexity: &str) -> String {
                 "api.v1: api.v1:get=\"/users\"; api.v1:post=\"/auth\"; api.v1:put=\"/data\"",
                 "api.v2: api.v2:graphql=\"/gql\"; api.v2:rest=\"/api\"; api.v2:websocket=\"/ws\"",
             ];
-            streams.join("\n")
+streams.join("\n")
         }
         _ => { // medium
-            "ui: ui:click=\"btn1\"; ui:hover=\"btn2\"; ui:focus=\"input1\"\ndb: db:query=\"users\"; db:conn=\"pool1\"; db:cache=\"redis\"\napi: api:get=\"/data\"; api:post=\"/submit\"; api:auth=\"token\""
+            "ui: ui:click=\"btn1\"; ui:hover=\"btn2\"; ui:focus=\"input1\"\ndb: db:query=\"users\"; db:conn=\"pool1\"; db:cache=\"redis\"\napi: api:get=\"/data\"; api:post=\"/submit\"; api:auth=\"token\"".to_string()
         }
-    }.to_string()
+    }
 }
 
 fn generate_gate_pattern(complexity: &str) -> String {
     match complexity {
         "simple" => {
-            "ui:ready=\"true\"; db:connected=\"true\"; api:auth=\"valid\""
+            "ui:ready=\"true\"; db:connected=\"true\"; api:auth=\"valid\"".to_string()
         }
         "complex" => {
             let mut tokens = Vec::new();
@@ -259,18 +259,18 @@ fn generate_gate_pattern(complexity: &str) -> String {
                 tokens.push(format!("auth:token{}=\"valid{}\"", i, i));
             }
             
-            tokens.join("; ")
+tokens.join("; ")
         }
         _ => { // medium
-            "ui:ready=\"true\"; ui:loading=\"false\"; db:connected=\"true\"; db:pool=\"available\"; api:auth=\"valid\"; api:rate=\"ok\"; priority:high=\"urgent\""
+            "ui:ready=\"true\"; ui:loading=\"false\"; db:connected=\"true\"; db:pool=\"available\"; api:auth=\"valid\"; api:rate=\"ok\"; priority:high=\"urgent\"".to_string()
         }
-    }.to_string()
+    }
 }
 
 fn generate_pipeline_pattern(complexity: &str) -> String {
     match complexity {
         "simple" => {
-            "input:data=\"raw\"; transform:clean=\"processed\"; output:result=\"final\""
+            "input:data=\"raw\"; transform:clean=\"processed\"; output:result=\"final\"".to_string()
         }
         "complex" => {
             let stages = vec![
@@ -281,12 +281,12 @@ fn generate_pipeline_pattern(complexity: &str) -> String {
                 "output.staging:write=\"temp\"; output.staging:index=\"created\"; output.staging:backup=\"saved\"",
                 "output.prod:deploy=\"live\"; output.prod:monitor=\"active\"; output.prod:alert=\"ready\"",
             ];
-            stages.join("; ")
+stages.join("; ")
         }
         _ => { // medium
-            "input:file=\"data.json\"; parse:json=\"object\"; validate:schema=\"pass\"; transform:map=\"array\"; filter:valid=\"items\"; output:write=\"result.json\""
+            "input:file=\"data.json\"; parse:json=\"object\"; validate:schema=\"pass\"; transform:map=\"array\"; filter:valid=\"items\"; output:write=\"result.json\"".to_string()
         }
-    }.to_string()
+    }
 }
 
 fn get_namespace_colors() -> HashMap<&'static str, &'static str> {

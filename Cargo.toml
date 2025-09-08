@@ -15,6 +15,10 @@ path = "src/pretty.rs"
 name = "xstream-gen"
 path = "src/bin/xstream-gen.rs"
 
+[[bin]]
+name = "xstream-color-gen"
+path = "src/bin/xstream-color-gen.rs"
+
 [dependencies]
 clap = { version = "4.0", features = ["derive"] }
 # RSB framework with re-exported dependencies

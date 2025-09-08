@@ -233,3 +233,225 @@ pub fn gen_log_stream(line_count: usize) -> String {
     
     lines.join("\n")
 }
+
+// Enhanced colored stream generation functions for Wave 3
+
+/// Generate a colored token stream with namespace-based coloring
+pub fn gen_colored_stream(namespaces: Vec<&str>, tokens_per_ns: usize) -> String {
+    let color_map = get_namespace_color_map();
+    let mut all_tokens = Vec::new();
+    
+    for namespace in namespaces {
+        let color_prefix = color_map.get(namespace).unwrap_or(&"def");
+        
+        for token_num in 1..=tokens_per_ns {
+            let token = format!(
+                "{}:item{:02}=\"{}{:02}\"",
+                namespace,
+                token_num,
+                color_prefix,
+                token_num
+            );
+            all_tokens.push(token);
+        }
+    }
+    
+    all_tokens.join("; ")
+}
+
+/// Generate pre-colored tokens with color themes
+pub fn gen_pre_colored_tokens(count: usize) -> Vec<String> {
+    let colors = ["red", "blue", "green", "yellow", "purple", "cyan", "orange", "pink"];
+    let mut tokens = Vec::new();
+    
+    for i in 0..count {
+        let color = colors[i % colors.len()];
+        let token = format!(
+            "color:block{:02}=\"{}{:02}\"",
+            i + 1,
+            color,
+            (i % 99) + 1
+        );
+        tokens.push(token);
+    }
+    
+    tokens
+}
+
+/// Generate fork-ready colored streams
+pub fn gen_fork_ready_stream(namespaces: Vec<&str>, tokens_per_ns: usize) -> String {
+    let color_map = get_namespace_color_map();
+    let mut all_tokens = Vec::new();
+    
+    for namespace in namespaces {
+        let color_prefix = color_map.get(namespace).unwrap_or(&"def");
+        
+        for token_num in 1..=tokens_per_ns {
+            let token = format!(
+                "{}:data{:02}=\"{}{:02}\"",
+                namespace,
+                token_num,
+                color_prefix,
+                token_num
+            );
+            all_tokens.push(token);
+        }
+    }
+    
+    all_tokens.join("; ")
+}
+
+/// Generate merge-ready colored streams (pre-forked format)
+pub fn gen_merge_ready_streams(namespaces: Vec<&str>, tokens_per_ns: usize) -> String {
+    let color_map = get_namespace_color_map();
+    let mut streams = Vec::new();
+    
+    for namespace in namespaces {
+        let color_prefix = color_map.get(namespace).unwrap_or(&"def");
+        let mut namespace_tokens = Vec::new();
+        
+        for token_num in 1..=tokens_per_ns {
+            let token = format!(
+                "{}:val{:02}=\"{}{:02}\"",
+                namespace,
+                token_num,
+                color_prefix,
+                token_num
+            );
+            namespace_tokens.push(token);
+        }
+        
+        streams.push(format!("{}: {}", namespace, namespace_tokens.join("; ")));
+    }
+    
+    streams.join("\n")
+}
+
+/// Generate gate-ready streams with filtering conditions
+pub fn gen_gate_ready_stream(include_auth: bool, token_count: usize) -> String {
+    let mut tokens = Vec::new();
+    
+    // Add auth tokens if requested
+    if include_auth {
+        tokens.push("auth:token=\"valid123\"".to_string());
+        tokens.push("auth:role=\"admin\"".to_string());
+    }
+    
+    // Add regular tokens with color coding
+    let colors = ["blue", "green", "yellow", "red"];
+    let namespaces = ["ui", "db", "api", "cache"];
+    
+    for i in 0..token_count {
+        let ns = namespaces[i % namespaces.len()];
+        let color = colors[i % colors.len()];
+        let token = format!(
+            "{}:item{:02}=\"{}{:02}\"",
+            ns,
+            i + 1,
+            color,
+            i + 1
+        );
+        tokens.push(token);
+    }
+    
+    tokens.join("; ")
+}
+
+/// Generate pipeline-ready streams with stages
+pub fn gen_pipeline_ready_stream(stage_count: usize, tokens_per_stage: usize) -> String {
+    let stages = ["input", "validate", "transform", "aggregate", "output"];
+    let colors = ["grey", "blue", "yellow", "green", "purple"];
+    let mut all_tokens = Vec::new();
+    
+    for stage_idx in 0..stage_count.min(stages.len()) {
+        let stage = stages[stage_idx];
+        let color = colors[stage_idx];
+        
+        for token_num in 1..=tokens_per_stage {
+            let token = format!(
+                "{}:step{:02}=\"{}{:02}\"",
+                stage,
+                token_num,
+                color,
+                token_num
+            );
+            all_tokens.push(token);
+        }
+    }
+    
+    all_tokens.join("; ")
+}
+
+/// Generate themed colored streams
+pub fn gen_themed_stream(theme: &str, token_count: usize) -> String {
+    let color_set = match theme {
+        "rainbow" => vec!["red", "orange", "yellow", "green", "blue", "indigo", "violet"],
+        "warm" => vec!["red", "orange", "yellow", "pink", "brown"],
+        "cool" => vec!["blue", "cyan", "green", "purple", "teal"],
+        "mono" => vec!["black", "grey", "white"],
+        "neon" => vec!["lime", "cyan", "magenta", "yellow"],
+        _ => vec!["red", "blue", "green", "yellow"], // default
+    };
+    
+    let mut tokens = Vec::new();
+    
+    for i in 0..token_count {
+        let color = color_set[i % color_set.len()];
+        let token = format!(
+            "theme:item{:02}=\"{}{:02}\"",
+            i + 1,
+            color,
+            (i % 99) + 1
+        );
+        tokens.push(token);
+    }
+    
+    tokens.join("; ")
+}
+
+/// Generate streams with block symbols for visual distinction
+pub fn gen_symbol_stream(namespaces: Vec<&str>, tokens_per_ns: usize) -> String {
+    let symbols = ["■", "▲", "●", "♦", "★", "▼", "◆", "♠"];
+    let color_map = get_namespace_color_map();
+    let mut all_tokens = Vec::new();
+    
+    for (ns_idx, namespace) in namespaces.iter().enumerate() {
+        let color_prefix = color_map.get(namespace).unwrap_or(&"def");
+        let symbol = symbols[ns_idx % symbols.len()];
+        
+        for token_num in 1..=tokens_per_ns {
+            let token = format!(
+                "{}:{}item{:02}=\"{}{:02}\"",
+                namespace,
+                symbol,
+                token_num,
+                color_prefix,
+                token_num
+            );
+            all_tokens.push(token);
+        }
+    }
+    
+    all_tokens.join("; ")
+}
+
+/// Get namespace to color mapping
+fn get_namespace_color_map() -> std::collections::HashMap<&'static str, &'static str> {
+    let mut map = std::collections::HashMap::new();
+    map.insert("ui", "blue");
+    map.insert("db", "green");
+    map.insert("api", "yellow");
+    map.insert("auth", "red");
+    map.insert("cache", "cyan");
+    map.insert("log", "grey");
+    map.insert("queue", "purple");
+    map.insert("file", "brown");
+    map.insert("net", "orange");
+    map.insert("sys", "pink");
+    map.insert("input", "grey");
+    map.insert("validate", "blue");
+    map.insert("transform", "yellow");
+    map.insert("aggregate", "green");
+    map.insert("output", "purple");
+    map
+}

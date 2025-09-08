@@ -5,6 +5,9 @@ pub mod transform;
 pub mod fork;
 pub mod merge;
 pub mod gate;
+pub mod real_fork;  // The REAL streaming fork using RSB!
+pub mod real_gate;  // The REAL streaming gate using RSB!
+pub mod real_merge; // The REAL streaming merge using RSB!
 
 // Re-export types for convenience
 pub use types::*;

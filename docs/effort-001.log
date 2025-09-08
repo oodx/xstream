@@ -1,0 +1,11 @@
+we are working on the low level library xstream, it used the Rebel/RSB Framework (adjacent repo) you can read the
+  docs in oodx/rebel/docs/ref/* xstream is a streaming library using RSB Streamable, recently i found out some of the
+  code you wrote wasnt actually using streams, just strings, so things like fork, merge, gate that were you code were
+  not implemented correctly. you later made "real_" variations that used streams correctly but we just need to make
+  sure these work. we made driver.rs to uat test all the features but its hard for me to visually parse, we came up
+  with the pattern to pre-color the 'value' part of the tokens so we can map out how the streams are flowing -- but
+  the ux is very noisey, not organized well, and doesnt properly walk through number uat ceremonies with clear visual
+  indication of which test is being showcased. so two things here. you can use #china to help summarize code or docs,
+  and lucas to help write code, the code MUST be RSB-compatible and use RSB library where it can. you can use
+  #redrover to look for rsb-framework issues, and lucas to write code though hes not as versed in rsb and would need
+  to read the docs for it. you can use redrover to verfiy any work he does, and he can read any of chinas summaries

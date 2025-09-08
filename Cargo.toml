@@ -7,7 +7,16 @@ edition = "2021"
 name = "xstream-driver"
 path = "src/driver.rs"
 
+[[bin]]
+name = "pretty"
+path = "src/pretty.rs"
+
+[[bin]]
+name = "xstream-gen"
+path = "src/bin/xstream-gen.rs"
+
 [dependencies]
+clap = { version = "4.0", features = ["derive"] }
 # RSB framework with re-exported dependencies
 rsb = { git = "https://github.com/oodx/rebel", branch = "main" }
 base64 = "0.22"

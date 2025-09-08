@@ -149,3 +149,87 @@ pub fn gen_config_stream() -> String {
     
     tokens.join("; ")
 }
+
+/// Generate a streaming dataset - like `for i in {1..N}; do printf "data\n"; done`
+/// Each line is a separate token stream that can be piped through XStream commands
+pub fn gen_stream_lines(line_count: usize, tokens_per_line: usize) -> String {
+    let mut lines = Vec::new();
+    
+    for i in 1..=line_count {
+        // Generate a line of tokens with sequence numbers
+        let mut line_tokens = Vec::new();
+        
+        // Add sequence tracking
+        line_tokens.push(format!("seq:line=\"{}\"", i));
+        line_tokens.push(format!("seq:total=\"{}\"", line_count));
+        
+        // Add random tokens for the rest
+        for _ in 2..tokens_per_line {
+            let mut rng = rand::rng();
+            let value_type = match rng.random_range(0..5) {
+                0 => ValueType::RandomAlnum(2), // Short for visual blocks
+                1 => ValueType::Literal(format!("{}■", get_rand_alpha(1))), // Color blocks
+                2 => ValueType::FromList,
+                3 => ValueType::RandomNumber(1, 99),
+                _ => ValueType::RandomHex(4),
+            };
+            line_tokens.push(gen_token(None, None, value_type));
+        }
+        
+        lines.push(line_tokens.join("; "));
+    }
+    
+    lines.join("\n")
+}
+
+/// Generate timed stream data - simulates data arriving over time
+/// Like `for i in {1..N}; do echo "timestamp=$(date) data"; sleep 0.1; done`
+pub fn gen_timed_stream(line_count: usize) -> String {
+    let mut lines = Vec::new();
+    let start_time = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    
+    for i in 0..line_count {
+        let timestamp = start_time + (i as u64);
+        
+        let tokens = vec![
+            format!("time:epoch=\"{}\"", timestamp),
+            format!("time:seq=\"{}\"", i),
+            gen_token(Some("sensor"), Some("temp"), ValueType::RandomNumber(18, 35)),
+            gen_token(Some("sensor"), Some("humidity"), ValueType::RandomNumber(30, 80)),
+            gen_token(Some("status"), None, ValueType::FromList),
+        ];
+        
+        lines.push(tokens.join("; "));
+    }
+    
+    lines.join("\n")
+}
+
+/// Generate log-style streaming data
+/// Like tailing a log file with structured data
+pub fn gen_log_stream(line_count: usize) -> String {
+    let log_levels = ["DEBUG", "INFO", "WARN", "ERROR"];
+    let components = ["auth", "db", "api", "cache", "worker"];
+    let mut lines = Vec::new();
+    
+    for i in 0..line_count {
+        let mut rng = rand::rng();
+        let level = log_levels[rng.random_range(0..log_levels.len())];
+        let component = components[rng.random_range(0..components.len())];
+        
+        let tokens = vec![
+            format!("log:level=\"{}\"", level),
+            format!("log:component=\"{}\"", component),
+            format!("log:seq=\"{}\"", i),
+            gen_token(Some("req"), Some("id"), ValueType::RandomHex(8)),
+            gen_token(Some("perf"), Some("ms"), ValueType::RandomNumber(1, 500)),
+        ];
+        
+        lines.push(tokens.join("; "));
+    }
+    
+    lines.join("\n")
+}

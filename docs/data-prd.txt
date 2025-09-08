@@ -1,0 +1,240 @@
+================================================================================
+                  PRONTODB STREAM COLLECTOR/SINK SPECIFICATION
+================================================================================
+
+PURPOSE
+-------
+• Receives parsed tokens from stream parser
+• Groups tokens into organized data structures
+• Builds execution context from security/meta/ttl tokens
+• Maintains separate contexts for clean separation of concerns
+• Prepares operations for transactional execution
+
+COLLECTOR DATA STRUCTURES
+-------------------------
+
+1. NAMESPACE OPERATION SETS
+   Structure: HashMap<(Project, Namespace), Vec<Operation>>
+   - Key: (project_name, namespace_name) tuple
+   - Value: Ordered list of operations
+   - Each operation contains: key, value, operation_type (set/del)
+   - Maintains insertion order for transaction consistency
+
+2. SECURITY CONTEXT
+   Structure: SecurityContext
+   - auth_type: Password | ApiKey | Session | Anonymous
+   - username: Option<String>
+   - password: Option<String>
+   - api_key: Option<String>
+   - session_id: Option<String>
+   - validated: bool
+   - timestamp: when authentication occurred
+
+3. META CONTEXT
+   Structure: MetaContext
+   - current_project: Option<String>
+   - current_namespace: Option<String>
+   - delimiter: char (default '.')
+   - transaction_state: None | InProgress | Committed | Rolled_back
+   - transaction_id: Option<String>
+
+4. TTL CONTEXT
+   Structure: TtlContext
+   - default_ttl: Option<u32> (seconds)
+   - override_ttl: Option<u32> (one-time use)
+   - eviction_policy: LRU | FIFO | LFU
+   - max_items: Option<usize>
+   - apply_to_namespaces: Vec<(Project, Namespace)>
+
+COLLECTION PROCESS
+------------------
+
+1. TOKEN RECEPTION
+   - Receive ordered token list from parser
+   - Each token typed as Security | Meta | TTL | Data
+   - Maintain token order for processing
+
+2. CONTEXT BUILDING PHASE
+   - Process security tokens first (must be validated)
+   - Process meta tokens to establish context
+   - Process TTL tokens for cache settings
+   - Order matters: security → meta → ttl → data
+
+3. DATA COLLECTION PHASE
+   - For each data token:
+     * Resolve full project.namespace.key using meta context
+     * Group by (project, namespace) tuple
+     * Append to operation list for that namespace
+     * Track if TTL override applies
+
+4. VALIDATION PHASE
+   - Ensure security context is complete if required
+   - Verify all namespace references are valid
+   - Check transaction boundaries match
+   - Validate TTL settings apply only to TTL namespaces
+
+COLLECTOR API
+-------------
+
+Interface methods:
+
+• new() → Collector
+  Initialize empty collector with default contexts
+
+• process_token(token: ParsedToken) → Result<()>
+  Add single token to appropriate context
+
+• process_stream(tokens: Vec<ParsedToken>) → Result<()>
+  Process entire token list in order
+
+• get_security_context() → &SecurityContext
+  Return current security state
+
+• get_meta_context() → &MetaContext
+  Return current meta settings
+
+• get_ttl_context() → &TtlContext
+  Return current TTL settings
+
+• get_operations() → HashMap<(String, String), Vec<Operation>>
+  Return grouped operations ready for execution
+
+• validate() → Result<()>
+  Perform final validation before execution
+
+• reset()
+  Clear all contexts for new stream
+
+STATE MANAGEMENT
+----------------
+
+Collector maintains:
+• Whether security has been validated
+• Current namespace context for unqualified keys
+• Pending TTL overrides
+• Transaction boundaries
+• Operation accumulator per namespace
+
+Context lifetime:
+• Security context: Valid for entire stream
+• Meta context: Mutable during stream processing
+• TTL context: Applies to subsequent operations
+• Data operations: Accumulated until execution
+
+ERROR CONDITIONS
+----------------
+
+• Security token after data token (protocol violation)
+• Meta change within transaction (context violation)
+• TTL directive for non-TTL namespace
+• Unresolved namespace reference
+• Transaction mismatch (begin without commit)
+• Invalid token type for current state
+
+EXECUTION PREPARATION
+---------------------
+
+Final output structure:
+```
+CollectedData {
+    namespaces: HashMap<String, HashMap<String, String>>,
+    security: HashMap<String, String>,
+    meta: HashMap<String, String>,
+    ttl: HashMap<String, String>
+}
+```
+
+Where:
+• namespaces: Generic buckets of key-value data
+  - Outer key: namespace identifier (any string)
+  - Inner map: key-value pairs for that namespace
+• security: All sec:* tokens as key-value pairs
+• meta: All meta:* tokens as key-value pairs  
+• ttl: All ttl:* tokens as key-value pairs
+
+The namespace keys are completely arbitrary - could be:
+- "todo.work"
+- "cache.sessions"
+- "user.preferences"
+- "quantum.entanglement"
+- Literally any string identifier
+
+TRANSACTION HANDLING
+--------------------
+
+1. IMPLICIT TRANSACTIONS
+   - All operations in stream treated as single transaction
+   - Rollback on any failure
+   - Commit only when all succeed
+
+2. EXPLICIT TRANSACTIONS
+   - Started by meta:tx=begin
+   - Ended by meta:tx=commit or meta:tx=rollback
+   - Can span multiple namespaces
+   - Nested transactions not supported
+
+3. TRANSACTION VALIDATION
+   - No meta context changes within transaction
+   - All operations must complete or none
+   - Rollback leaves no partial state
+
+OPTIMIZATION OPPORTUNITIES
+--------------------------
+
+• Batch operations by namespace for fewer table switches
+• Pre-validate all namespaces exist before operations
+• Cache security validation for session reuse
+• Reuse collector instances with reset() to avoid allocation
+
+TESTING REQUIREMENTS
+--------------------
+
+• Correct grouping of 1000 operations across 50 namespaces
+• Security context properly isolated from data
+• Meta context changes affect subsequent operations only
+• TTL context applies correctly to cache namespaces
+• Transaction boundaries respected
+• Memory efficient for large streams
+• Thread-safe if shared between parser and executor
+
+INTEGRATION POINTS
+------------------
+
+UPSTREAM (from Parser):
+• Receives: Vec<ParsedToken>
+• Token types: Security | Meta | TTL | Data
+• Tokens in protocol-compliant order
+
+DOWNSTREAM (to Executor):
+• Provides: ExecutionPlan
+• Security validated and ready
+• Operations grouped by namespace
+• Context fully resolved
+
+EXAMPLE FLOW
+------------
+
+Input tokens:
+1. sec:apikey=xyz
+2. meta:ns=todo.work
+3. ttl:default=300
+4. item1=value1
+5. item2=value2
+6. meta:ns=kb.recipes
+7. pasta=carbonara
+
+Collector output:
+- Security: {api_key: "xyz", validated: true}
+- Operations:
+  * (todo, work): [{set item1 value1}, {set item2 value2}]
+  * (kb, recipes): [{set pasta carbonara}]
+- TTL: {default: 300, applies_to: [(todo, work)]}
+
+PERFORMANCE METRICS
+-------------------
+
+• Process 10K tokens in < 100ms
+• Memory overhead < 2x token size
+• Group operations with O(n) complexity
+• Validate contexts in single pass
+• Support streaming collection (process as received)

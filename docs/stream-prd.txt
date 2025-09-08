@@ -1,0 +1,288 @@
+================================================================================
+                    PRONTODB STREAM PARSER SPECIFICATION
+================================================================================
+
+PURPOSE
+-------
+• Processes string-based command streams for ProntoDB
+• Handles token extraction and meta-directive interpretation  
+• Validates security and enforces protocol rules
+• Transforms raw input into structured operations
+• Maintains context state across token sequences
+
+TOKEN TYPES
+-----------
+
+1. SECURITY NAMESPACE TOKENS (must appear first in rightmost-leading order)
+   - sec:pass=<password>         → Password authentication (must precede user)
+   - sec:user=<username>         → Username for password auth
+   - sec:apikey=<key>           → API key authentication (standalone)
+   - sec:sess=<sessionid>       → Session-based authentication
+
+2. META NAMESPACE DIRECTIVES (modify interpretation state)
+   - meta:ns=project.namespace   → Sets active namespace for unqualified keys
+   - meta:delim=<character>      → Overrides default delimiter
+   - meta:tx=begin               → Starts explicit transaction
+   - meta:tx=commit              → Commits current transaction
+   - meta:tx=rollback            → Aborts current transaction
+
+3. TTL NAMESPACE DIRECTIVES (cache-specific settings)
+   - ttl:default=<seconds>       → Default TTL for subsequent operations
+   - ttl:override=<seconds>      → One-time TTL override for next operation
+   - ttl:evict=<policy>          → Eviction policy (lru, fifo, etc.)
+   - ttl:max_items=<count>       → Maximum items in cache namespace
+
+4. DATA TOKENS (key-value pairs for storage)
+   - key=value                   → Simple key-value pair
+   - project.namespace.key=value → Fully qualified key
+   - key=                        → Empty value
+   - key=-                       → Stdin value placeholder
+
+Token Format: namespace:key=value where namespace identifies the token type
+
+PARSER STATE MANAGEMENT
+-----------------------
+Internal state maintained:
+• Current project and namespace context
+• Active delimiter character  
+• Default TTL value
+• Authentication status
+• Transaction boundaries
+• Accumulated operations buffer
+
+PROCESSING RULES
+----------------
+
+1. Security Preamble Enforcement
+   - If security.required=true, first data token must have valid auth
+   - Auth tokens must appear in correct order (pass before user)
+   - Validation occurs before any data processing
+
+2. Namespace Resolution
+   - Unqualified keys use current namespace context
+   - Qualified keys override context for that operation only
+   - Parser builds full project.namespace.key addresses
+
+3. Transaction Semantics
+   - All tokens within stream form implicit transaction unless explicit
+   - On any parse error or validation failure, entire stream rejected
+   - Explicit transactions via meta:tx directives
+
+4. Context Persistence
+   - Meta-directives affect all subsequent tokens in stream
+   - Context does not persist beyond stream boundary
+   - Each stream starts with clean state
+
+OUTPUT STRUCTURE
+----------------
+Parser produces:
+• SecurityContext with validated auth information
+• List of NamespaceOperations grouped by project.namespace
+• Each operation contains resolved project, namespace, key-value pairs
+• Transaction boundary markers if explicit
+
+ERROR CONDITIONS
+----------------
+• Missing required security preamble
+• Invalid token syntax (missing =, bad namespace)
+• Delimiter conflicts in keys
+• Invalid meta-directive values
+• Transaction boundary violations
+• Namespace resolution failures
+
+SPECIAL CASES
+-------------
+• Escaped delimiters: Keys containing delimiter rejected
+• Empty tokens: Consecutive semicolons ignored
+• Whitespace: Trimmed from boundaries, preserved in values
+• Base64 values: Indicated by b64: prefix
+• Multi-line values: Not supported in stream format
+• Comments: Tokens starting with # ignored
+
+STREAM EXAMPLES
+---------------
+
+Basic authenticated stream:
+sec:pass=secret; sec:user=admin; todo.work.item1=value1; todo.work.item2=value2;
+
+Namespace switching stream:
+sec:apikey=xyz123; meta:ns=todo.work; item1=value1; meta:ns=kb.recipes; pasta=carbonara;
+
+TTL cache stream:
+sec:apikey=xyz; meta:ns=cache.sessions; ttl:default=300; user1=data1; user2=data2;
+
+Transaction stream:
+sec:apikey=xyz; meta:tx=begin; todo.work.item=value; meta:tx=commit;
+
+TESTING REQUIREMENTS
+--------------------
+• Handle 10KB typical streams without degradation
+• 1MB maximum stream size with graceful rejection
+• 1000 tokens per stream maximum
+• Malformed input without crashes
+• Adversarial input attempting injection
+• Round-trip serialize/deserialize accuracy
+
+================================================================================
+                   PRONTODB STREAM GENERATOR SPECIFICATION
+================================================================================
+
+PURPOSE
+-------
+• Creates properly formatted ProntoDB command streams
+• Handles token ordering and security preamble generation
+• Optimizes namespace context switching
+• Inserts transaction boundaries as needed
+• Produces protocol-compliant strings for parser consumption
+
+INPUT STRUCTURE
+---------------
+
+1. SECURITY CONFIG
+   - Password auth: username and password
+   - API key auth: key string
+   - Session auth: session token
+   - Anonymous: when security.required=false
+
+2. OPERATION LIST
+   - Each operation: project, namespace, key, value
+   - Operations may span multiple namespaces
+   - TTL values for cache operations
+   - Transaction boundaries
+
+3. GENERATOR OPTIONS
+   - Optimize namespace switching (group by namespace)
+   - Include explicit transaction boundaries
+   - Custom delimiter override
+   - Value encoding preferences
+
+GENERATION RULES
+----------------
+
+1. Security Preamble Generation
+   - Based on SecurityConfig, generate appropriate auth tokens
+   - Password must precede username in output
+   - API key standalone
+   - Session token standalone
+
+2. Namespace Optimization
+   - Analyze operation list to minimize meta:ns directives
+   - Group consecutive operations in same namespace
+   - Insert meta:ns only on namespace changes
+
+3. Context State Tracking
+   - Maintain current namespace context during generation
+   - Only emit meta directives when state change needed
+   - Reset context at stream boundaries
+
+4. Token Ordering
+   - Security tokens first
+   - Context meta-directives second
+   - TTL directives before data if needed
+   - Data tokens maintain operation order
+
+OUTPUT FORMAT
+-------------
+• Tokens separated by semicolon and space
+• No trailing semicolon unless explicit
+• Whitespace trimmed from token boundaries
+• Special characters handled properly
+
+GENERATION STRATEGIES
+---------------------
+
+1. NAIVE MODE
+   - One meta:ns directive per operation
+   - No optimization attempted
+   - Fully qualified keys
+
+2. OPTIMIZED MODE
+   - Group operations by namespace
+   - Minimal directive changes
+   - Use unqualified keys with context
+
+3. EXPLICIT MODE
+   - Include all context always
+   - Redundant but clear
+   - Debugging friendly
+
+4. COMPACT MODE
+   - Minimal whitespace
+   - Shortened meta keys if allowed
+   - Maximum compression
+
+SPECIAL HANDLING
+----------------
+• Empty values: Generate key= with no value
+• Stdin placeholders: Generate key=- for stdin
+• Base64 encoding: Prefix with b64: when requested
+• Delimiter in keys: Reject generation request
+• Large values: Warn if exceeds size limits
+• Null operations: Skip without tokens
+
+TRANSFORMATION EXAMPLES
+-----------------------
+
+Input operations:
+- Set todo.work.item1 = "value1"
+- Set todo.work.item2 = "value2"  
+- Set kb.recipes.pasta = "carbonara"
+
+Optimized output:
+sec:apikey=xyz; meta:ns=todo.work; item1=value1; item2=value2; meta:ns=kb.recipes; pasta=carbonara;
+
+Naive output:
+sec:apikey=xyz; todo.work.item1=value1; todo.work.item2=value2; kb.recipes.pasta=carbonara;
+
+STREAM BUILDING API
+-------------------
+
+Methods provided:
+• begin() - Initialize with security preamble
+• set_namespace(project, namespace) - Add namespace directive
+• add_operation(key, value) - Add data token
+• set_ttl(seconds) - Add TTL directive
+• add_transaction_boundary(type) - Add tx control
+• finalize() - Return completed stream string
+
+VALIDATION RULES
+----------------
+• Security tokens present when required
+• No delimiter characters in keys
+• Token count within limits (1000 per stream)
+• Stream size within limits (1MB maximum)
+• Valid namespace references
+• Proper transaction pairing
+
+ERROR CONDITIONS
+----------------
+• Missing required authentication
+• Invalid characters in keys
+• Oversized values
+• Circular namespace references
+• Unmatched transaction boundaries
+• Protocol violations
+
+TESTING SCENARIOS
+-----------------
+
+1. Single namespace batch - All ops in one namespace
+2. Multi-namespace interleaved - Alternating namespaces
+3. Large batch optimization - 1000 ops across 50 namespaces
+4. Security variations - Each auth type
+5. Transaction boundaries - Explicit tx wrapping
+6. Edge cases - Empty values, special chars, max sizes
+
+ROUND-TRIP REQUIREMENT
+----------------------
+• Generator output must parse correctly
+• Parser output must regenerate equivalently
+• Semantic equivalence maintained
+• No data loss in conversion
+
+PERFORMANCE TARGETS
+-------------------
+• Generate 1000 token stream in under 10ms
+• Memory usage linear with operation count
+• No string concatenation loops
+• Buffer reuse for multiple generations

@@ -1,32 +1,25 @@
-// XStream Merge Operations - Channel combining with macro sugar
-// Combine multiple token streams with various strategies
+// XStream REAL Merge Operations - Complete RSB Streamable Implementation
+// Consolidating all features from fake merge.rs with proper RSB patterns
 
+use rsb::prelude::*;
+use std::collections::{HashSet, HashMap};
 use crate::xstream::types::is_token_streamable;
-use std::collections::HashMap;
 
-/// Merge strategies for combining multiple streams
-#[derive(Debug, Clone)]
-pub enum MergeStrategy {
-    /// Simple concatenation in order given
-    Concat,
-    /// Interleave tokens in round-robin fashion  
-    Interleave,
-    /// Priority order - channels listed first get precedence
-    Priority(Vec<String>),
-    /// Sort tokens by key name
-    Sort,
+/// Merge operation that combines multiple streams
+pub struct Merge;
+
+impl Streamable for Merge {
+    type Args = MergeStrategy;
+    
+    fn stream_apply(stdin: &str, args: Self::Args) -> String {
+        // Split input by newlines (each line is a forked stream)
+        let streams: Vec<&str> = stdin.lines().collect();
+        
+        merge_with_strategy(&streams, args)
+    }
 }
 
-/// Collision handling for duplicate keys across streams
-#[derive(Debug, Clone)]
-pub enum CollisionPolicy {
-    /// Keep first occurrence of duplicate key
-    KeepFirst,
-    /// Keep last occurrence of duplicate key  
-    KeepLast,
-    /// Annotate duplicates with dupe:key=true
-    Annotate,
-}
+// Core merge functions from fake version (now using RSB compatible format)
 
 /// Basic merge - concatenate streams in order
 pub fn merge_concat(streams: &[&str]) -> String {
@@ -46,10 +39,60 @@ pub fn merge_concat(streams: &[&str]) -> String {
 /// Merge with strategy
 pub fn merge_with_strategy(streams: &[&str], strategy: MergeStrategy) -> String {
     match strategy {
-        MergeStrategy::Concat => merge_concat(streams),
+        MergeStrategy::Concat => {
+            // Extract tokens from RSB format
+            let mut all_tokens = Vec::new();
+            for stream in streams {
+                if let Some((_, tokens)) = stream.split_once(": ") {
+                    all_tokens.extend(tokens.split("; "));
+                } else {
+                    // Handle streams without namespace prefix
+                    all_tokens.extend(stream.split("; "));
+                }
+            }
+            all_tokens.join("; ")
+        }
         MergeStrategy::Interleave => merge_interleave(streams),
         MergeStrategy::Priority(priorities) => merge_priority(streams, &priorities),
         MergeStrategy::Sort => merge_sorted(streams),
+        MergeStrategy::Dedupe => {
+            // Remove duplicate tokens
+            let mut seen = HashSet::new();
+            let mut result = Vec::new();
+            
+            for stream in streams {
+                let tokens = if let Some((_, tokens)) = stream.split_once(": ") {
+                    tokens
+                } else {
+                    stream
+                };
+                
+                for token in tokens.split("; ") {
+                    let token = token.trim();
+                    if !token.is_empty() && seen.insert(token.to_string()) {
+                        result.push(token);
+                    }
+                }
+            }
+            result.join("; ")
+        }
+        MergeStrategy::ByNamespace => {
+            // Group by namespace and merge within each group
+            let mut namespace_groups: HashMap<String, Vec<&str>> = HashMap::new();
+            
+            for stream in streams {
+                if let Some((namespace, tokens)) = stream.split_once(": ") {
+                    let entry = namespace_groups.entry(namespace.to_string()).or_insert_with(Vec::new);
+                    entry.extend(tokens.split("; "));
+                }
+            }
+            
+            let mut result = Vec::new();
+            for (namespace, tokens) in namespace_groups {
+                result.push(format!("{}: {}", namespace, tokens.join("; ")));
+            }
+            result.join("\n")
+        }
     }
 }
 
@@ -58,7 +101,14 @@ pub fn merge_interleave(streams: &[&str]) -> String {
     let token_lists: Vec<Vec<&str>> = streams
         .iter()
         .filter(|s| is_token_streamable(s))
-        .map(|s| s.split(';').map(|t| t.trim()).filter(|t| !t.is_empty()).collect())
+        .map(|s| {
+            // Handle RSB format "namespace: tokens" or plain tokens
+            if let Some((_, tokens)) = s.split_once(": ") {
+                tokens.split(';').map(|t| t.trim()).filter(|t| !t.is_empty()).collect()
+            } else {
+                s.split(';').map(|t| t.trim()).filter(|t| !t.is_empty()).collect()
+            }
+        })
         .collect();
     
     if token_lists.is_empty() {
@@ -89,7 +139,13 @@ pub fn merge_priority(streams: &[&str], priorities: &[String]) -> String {
             continue;
         }
         
-        for token in stream.split(';') {
+        let tokens_str = if let Some((_, tokens)) = stream.split_once(": ") {
+            tokens
+        } else {
+            stream
+        };
+        
+        for token in tokens_str.split(';') {
             let token = token.trim();
             if token.is_empty() {
                 continue;
@@ -137,7 +193,13 @@ pub fn merge_sorted(streams: &[&str]) -> String {
             continue;
         }
         
-        for token in stream.split(';') {
+        let tokens_str = if let Some((_, tokens)) = stream.split_once(": ") {
+            tokens
+        } else {
+            stream
+        };
+        
+        for token in tokens_str.split(';') {
             let token = token.trim();
             if !token.is_empty() {
                 all_tokens.push(token.to_string());
@@ -176,7 +238,13 @@ pub fn merge_with_collision_policy(
             continue;
         }
         
-        for token in stream.split(';') {
+        let tokens_str = if let Some((_, tokens)) = stream.split_once(": ") {
+            tokens
+        } else {
+            stream
+        };
+        
+        for token in tokens_str.split(';') {
             let token = token.trim();
             if token.is_empty() {
                 continue;
@@ -220,26 +288,117 @@ pub fn merge_with_collision_policy(
     result_tokens.join("; ")
 }
 
-/// Macro for clean merge syntax
+/// Macro for clean merge syntax - RSB compatible
 #[macro_export]
 macro_rules! merge {
     // merge!(stream1, stream2, stream3)
     ($($stream:expr),+) => {{
         let streams = vec![$($stream),+];
-        $crate::xstream::merge::merge_concat(&streams)
+        $crate::xstream::real_merge::merge_concat(&streams)
     }};
     
     // merge!(strategy: Interleave, stream1, stream2, stream3)
     (strategy: $strategy:expr, $($stream:expr),+) => {{
         let streams = vec![$($stream),+];
-        $crate::xstream::merge::merge_with_strategy(&streams, $strategy)
+        $crate::xstream::real_merge::merge_with_strategy(&streams, $strategy)
     }};
     
     // merge!(policy: KeepFirst, stream1, stream2, stream3)
     (policy: $policy:expr, $($stream:expr),+) => {{
         let streams = vec![$($stream),+];
-        $crate::xstream::merge::merge_with_collision_policy(&streams, $policy)
+        $crate::xstream::real_merge::merge_with_collision_policy(&streams, $policy)
     }};
+}
+
+/// Selective merge - only merge streams matching criteria
+pub struct SelectiveMerge;
+
+impl Streamable for SelectiveMerge {
+    type Args = (MergeStrategy, MergeFilter);
+    
+    fn stream_apply(stdin: &str, args: Self::Args) -> String {
+        let (strategy, filter) = args;
+        let streams: Vec<&str> = stdin.lines().collect();
+        
+        // Filter streams first
+        let filtered_streams: Vec<&str> = streams
+            .into_iter()
+            .filter(|stream| {
+                match &filter {
+                    MergeFilter::NamespaceOnly(ns) => stream.starts_with(&format!("{}:", ns)),
+                    MergeFilter::ContainsValue(val) => stream.contains(val),
+                    MergeFilter::MinTokens(min) => {
+                        let token_count = if let Some((_, tokens)) = stream.split_once(": ") {
+                            tokens.split("; ").count()
+                        } else {
+                            stream.split("; ").count()
+                        };
+                        token_count >= *min
+                    }
+                }
+            })
+            .collect();
+        
+        // Apply merge strategy to filtered streams
+        let filtered_input = filtered_streams.join("\n");
+        filtered_input.stream_apply(Merge, strategy)
+    }
+}
+
+/// Weighted merge - merge with priority/weighting
+pub struct WeightedMerge;
+
+impl Streamable for WeightedMerge {
+    type Args = Vec<(String, f32)>; // (namespace, weight)
+    
+    fn stream_apply(stdin: &str, args: Self::Args) -> String {
+        let streams: Vec<&str> = stdin.lines().collect();
+        let mut weighted_tokens: Vec<&str> = Vec::new();
+        
+        for stream in streams {
+            if let Some((namespace, tokens)) = stream.split_once(": ") {
+                let weight = args.iter()
+                    .find(|(ns, _)| ns == namespace)
+                    .map(|(_, w)| *w)
+                    .unwrap_or(1.0);
+                
+                let token_list: Vec<&str> = tokens.split("; ").collect();
+                let take_count = (token_list.len() as f32 * weight).round() as usize;
+                
+                weighted_tokens.extend(&token_list[..take_count.min(token_list.len())]);
+            }
+        }
+        
+        weighted_tokens.join("; ")
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum MergeStrategy {
+    Concat,       // Concatenate all streams
+    Interleave,   // Interleave tokens from each stream
+    Dedupe,       // Remove duplicates
+    ByNamespace,  // Group by namespace
+    Priority(Vec<String>), // Priority order - channels listed first get precedence
+    Sort,         // Sort tokens by key name
+}
+
+/// Collision handling for duplicate keys across streams
+#[derive(Debug, Clone)]
+pub enum CollisionPolicy {
+    /// Keep first occurrence of duplicate key
+    KeepFirst,
+    /// Keep last occurrence of duplicate key  
+    KeepLast,
+    /// Annotate duplicates with dupe:key=true
+    Annotate,
+}
+
+#[derive(Debug, Clone)]
+pub enum MergeFilter {
+    NamespaceOnly(String),  // Only merge specific namespace
+    ContainsValue(String),  // Only merge streams containing value
+    MinTokens(usize),       // Only merge streams with min tokens
 }
 
 #[cfg(test)]
@@ -303,5 +462,50 @@ mod tests {
         let keep_last = merge_with_collision_policy(&[stream1, stream2], CollisionPolicy::KeepLast);
         assert!(!keep_last.contains("key=\"first\""));
         assert!(keep_last.contains("key=\"second\""));
+    }
+    
+    #[test]
+    fn test_merge_priority() {
+        let stream1 = "ui:a=\"1\"; db:b=\"2\"";
+        let stream2 = "log:c=\"3\"; ui:d=\"4\"";
+        
+        let result = merge_priority(&[stream1, stream2], &["ui".to_string(), "log".to_string()]);
+        
+        // ui tokens should come first, then log, then db
+        let pos_ui = result.find("ui:").unwrap_or(usize::MAX);
+        let pos_log = result.find("log:").unwrap_or(usize::MAX);
+        let pos_db = result.find("db:").unwrap_or(usize::MAX);
+        
+        assert!(pos_ui < pos_log);
+        assert!(pos_log < pos_db);
+    }
+    
+    #[test]
+    fn test_rsb_streamable_merge() {
+        let input = "ui: ui:click=\"btn1\"\ndb: db:host=\"localhost\"";
+        let result = input.to_string().stream_apply(Merge, MergeStrategy::Concat);
+        
+        assert!(result.contains("ui:click=\"btn1\""));
+        assert!(result.contains("db:host=\"localhost\""));
+    }
+    
+    #[test]
+    fn test_merge_dedupe_streamable() {
+        let input = "ui: ui:click=\"btn1\"\ndb: ui:click=\"btn1\""; // Duplicate token
+        let result = input.to_string().stream_apply(Merge, MergeStrategy::Dedupe);
+        
+        // Should only have one instance of ui:click="btn1"
+        let count = result.matches("ui:click=\"btn1\"").count();
+        assert_eq!(count, 1);
+    }
+    
+    #[test]
+    fn test_merge_interleave_streamable() {
+        let input = "ui: ui:a=\"1\"; ui:b=\"2\"\ndb: db:x=\"9\"; db:y=\"8\"";
+        let result = input.to_string().stream_apply(Merge, MergeStrategy::Interleave);
+        
+        // Should interleave: ui:a="1", db:x="9", ui:b="2", db:y="8"
+        assert!(result.contains("ui:a=\"1\""));
+        assert!(result.contains("db:x=\"9\""));
     }
 }

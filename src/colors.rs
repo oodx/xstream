@@ -19,12 +19,16 @@ pub fn get_color(name: &str) -> &'static str {
     match name {
         // Your legacy stderr colors
         "red" => "\x1B[38;5;9m",
+        "red2" => "\x1B[38;5;197m", 
+        "magenta" => "\x1B[35m",
         "blue" => "\x1B[36m", 
+        "blue2" => "\x1B[38;5;39m",
         "green" => "\x1B[38;5;10m",
         "orange" => "\x1B[38;5;214m",
         "purple" => "\x1B[38;5;213m",
+        "purple2" => "\x1B[38;5;141m",
         "cyan" => "\x1B[38;5;14m",
-        "yellow" => "\x1B[33m",
+        "yellow" => "\x1B[38;5;220m", 
         "grey" => "\x1B[38;5;242m",
         "white" => "\x1B[38;5;247m",
         
@@ -51,6 +55,53 @@ pub fn get_channel_color_name(index: usize) -> &'static str {
 /// Colorize text with specified color
 pub fn colorize(text: &str, color: &str) -> String {
     format!("{}{}{}", get_color(color), text, RESET)
+}
+
+/// Pre-color stream tokens - applies color to VALUES inside quotes
+pub fn pre_color_stream(stream: &str, color_name: &str) -> String {
+    let color_code = get_color(color_name);
+    if color_code.is_empty() {
+        return stream.to_string();
+    }
+    
+    // Use same color codes as get_color() for consistency
+    let simple_color = get_color(color_name);
+    
+    // Apply color only to quoted values: key="value" becomes key="[COLOR]value[RESET]"
+    let re = regex::Regex::new(r#"="([^"]+)""#).unwrap();
+    re.replace_all(stream, &format!(r#"="{}$1{}""#, simple_color, RESET)).to_string()
+}
+
+/// Create multiple pre-colored streams for testing
+pub fn create_pre_colored_streams(base_streams: &[&str], colors: &[&str]) -> Vec<String> {
+    base_streams.iter()
+        .zip(colors.iter().cycle())
+        .map(|(stream, color)| pre_color_stream(stream, color))
+        .collect()
+}
+
+/// Generate test streams with color blocks for visual testing
+pub fn gen_color_test_streams(colors: &[&str]) -> Vec<(String, String)> {
+    colors.iter().enumerate().map(|(i, color)| {
+        let namespace = char::from(b'a' + (i as u8));
+        let color_char = color.chars().next().unwrap_or('x');
+        let stream = format!("{}:x=\"{}■\"; {}:y=\"{}■\"", namespace, color_char, namespace, color_char);
+        (color.to_string(), stream)
+    }).collect()
+}
+
+/// Generate synchronized test streams with consistent token counts
+pub fn gen_sync_test_streams(colors: &[&str], token_count: usize) -> Vec<String> {
+    colors.iter().enumerate().map(|(i, color)| {
+        let namespace = char::from(b'a' + (i as u8));
+        let color_char = color.chars().next().unwrap_or('x');
+        let tokens: Vec<String> = (0..token_count).map(|j| {
+            let key = char::from(b'w' + (j as u8));
+            format!("{}:{}=\"{}■\"", namespace, key, color_char)
+        }).collect();
+        let stream = tokens.join("; ");
+        pre_color_stream(&stream, color)
+    }).collect()
 }
 
 /// Colorize namespace tokens with channel colors

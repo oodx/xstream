@@ -110,7 +110,8 @@ streamable!(LinesToTokens(stdin,) => {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rsb::streamable::{Streamable, StreamApply};
+    #[allow(unused_imports)]
+    use rsb::streamable::{Streamable, StreamApply}; // We want StreamApply but aren't using it yet
     
     #[test]
     fn test_token_count() {

@@ -1,8 +1,44 @@
-// XStream Fork Operations - Channel splitting with macro sugar
-// Split token streams by namespace channels
+// XStream REAL Fork Operations - Complete RSB Streamable Implementation
+// Consolidating all features from fake fork.rs with proper RSB patterns
 
+use rsb::prelude::*;
 use crate::xstream::types::{TokenBucket, BucketMode};
 use std::collections::HashMap;
+
+/// Fork operation that splits a stream by namespace
+pub struct Fork;
+
+impl Streamable for Fork {
+    type Args = Vec<String>; // Channel names to fork into
+    
+    fn stream_apply(stdin: &str, args: Self::Args) -> String {
+        fork_by_namespace(stdin, &args.iter().map(|s| s.as_str()).collect::<Vec<_>>())
+    }
+}
+
+/// Fork all namespaces operation
+pub struct ForkAll;
+
+impl Streamable for ForkAll {
+    type Args = (); // No args needed
+    
+    fn stream_apply(stdin: &str, _args: Self::Args) -> String {
+        fork_all_namespaces(stdin)
+    }
+}
+
+/// Fork by pattern operation
+pub struct ForkPattern;
+
+impl Streamable for ForkPattern {
+    type Args = String; // Regex pattern
+    
+    fn stream_apply(stdin: &str, args: Self::Args) -> String {
+        fork_by_pattern(stdin, &args)
+    }
+}
+
+// Core fork functions from fake version (now using RSB compatible format)
 
 /// Fork modes for different splitting strategies
 #[derive(Debug, Clone)]
@@ -16,13 +52,13 @@ pub enum ForkMode {
 }
 
 /// Fork a token stream by namespace into separate channel streams
-pub fn fork_by_namespace(input: &str, channels: &[&str]) -> HashMap<String, String> {
+pub fn fork_by_namespace(input: &str, channels: &[&str]) -> String {
     let bucket = match TokenBucket::from_str(input, BucketMode::Hybrid) {
         Ok(b) => b,
-        Err(_) => return HashMap::new(), // Invalid input returns empty map
+        Err(_) => return String::new(), // Invalid input returns empty
     };
     
-    let mut result = HashMap::new();
+    let mut results = Vec::new();
     
     for channel in channels {
         if let Some(namespace_data) = bucket.get_namespace(channel) {
@@ -32,22 +68,22 @@ pub fn fork_by_namespace(input: &str, channels: &[&str]) -> HashMap<String, Stri
                 .collect();
             
             if !tokens.is_empty() {
-                result.insert(channel.to_string(), tokens.join("; "));
+                results.push(format!("{}: {}", channel, tokens.join("; ")));
             }
         }
     }
     
-    result
+    results.join("\n")
 }
 
 /// Fork all namespaces found in the stream
-pub fn fork_all_namespaces(input: &str) -> HashMap<String, String> {
+pub fn fork_all_namespaces(input: &str) -> String {
     let bucket = match TokenBucket::from_str(input, BucketMode::Hybrid) {
         Ok(b) => b,
-        Err(_) => return HashMap::new(),
+        Err(_) => return String::new(),
     };
     
-    let mut result = HashMap::new();
+    let mut results = Vec::new();
     
     for (namespace, data) in &bucket.data {
         let tokens: Vec<String> = data
@@ -62,28 +98,28 @@ pub fn fork_all_namespaces(input: &str) -> HashMap<String, String> {
             .collect();
         
         if !tokens.is_empty() {
-            result.insert(namespace.clone(), tokens.join("; "));
+            results.push(format!("{}: {}", namespace, tokens.join("; ")));
         }
     }
     
-    result
+    results.join("\n")
 }
 
 /// Fork by pattern matching
-pub fn fork_by_pattern(input: &str, pattern: &str) -> HashMap<String, String> {
+pub fn fork_by_pattern(input: &str, pattern: &str) -> String {
     use regex::Regex;
     
     let re = match Regex::new(pattern) {
         Ok(r) => r,
-        Err(_) => return HashMap::new(), // Invalid regex returns empty
+        Err(_) => return String::new(), // Invalid regex returns empty
     };
     
     let bucket = match TokenBucket::from_str(input, BucketMode::Hybrid) {
         Ok(b) => b,
-        Err(_) => return HashMap::new(),
+        Err(_) => return String::new(),
     };
     
-    let mut result = HashMap::new();
+    let mut results = Vec::new();
     
     for (namespace, data) in &bucket.data {
         if re.is_match(namespace) {
@@ -99,40 +135,67 @@ pub fn fork_by_pattern(input: &str, pattern: &str) -> HashMap<String, String> {
                 .collect();
             
             if !tokens.is_empty() {
-                result.insert(namespace.clone(), tokens.join("; "));
+                results.push(format!("{}: {}", namespace, tokens.join("; ")));
             }
         }
     }
     
-    result
+    results.join("\n")
 }
 
-/// Macro for clean fork syntax
+/// Macro for clean fork syntax - RSB compatible
 #[macro_export]
 macro_rules! fork {
-    // fork!(stream, "ch1", "ch2", "ch3") -> (ch1_stream, ch2_stream, ch3_stream)
+    // fork!(stream, "ch1", "ch2", "ch3") -> HashMap result
     ($stream:expr, $($channel:expr),+) => {{
         let channels = vec![$($channel),+];
-        let map = $crate::xstream::fork::fork_by_namespace($stream, &channels);
-        ($(map.get($channel).cloned().unwrap_or_default()),+)
+        let result = $crate::xstream::real_fork::fork_by_namespace($stream, &channels);
+        
+        // Convert to HashMap for compatibility
+        let mut map = std::collections::HashMap::new();
+        for line in result.lines() {
+            if let Some((channel, tokens)) = line.split_once(": ") {
+                map.insert(channel.to_string(), tokens.to_string());
+            }
+        }
+        map
     }};
 }
 
-/// Macro for fork all namespaces
+/// Macro for fork all namespaces  
 #[macro_export]
 macro_rules! fork_all {
     ($stream:expr) => {{
-        $crate::xstream::fork::fork_all_namespaces($stream)
+        let result = $crate::xstream::real_fork::fork_all_namespaces($stream);
+        
+        // Convert to HashMap for compatibility
+        let mut map = std::collections::HashMap::new();
+        for line in result.lines() {
+            if let Some((namespace, tokens)) = line.split_once(": ") {
+                map.insert(namespace.to_string(), tokens.to_string());
+            }
+        }
+        map
     }};
 }
 
-/// Macro for fork by pattern  
+/// Macro for fork by pattern
 #[macro_export]
 macro_rules! fork_pattern {
     ($stream:expr, $pattern:expr) => {{
-        $crate::xstream::fork::fork_by_pattern($stream, $pattern)
+        let result = $crate::xstream::real_fork::fork_by_pattern($stream, $pattern);
+        
+        // Convert to HashMap for compatibility  
+        let mut map = std::collections::HashMap::new();
+        for line in result.lines() {
+            if let Some((namespace, tokens)) = line.split_once(": ") {
+                map.insert(namespace.to_string(), tokens.to_string());
+            }
+        }
+        map
     }};
 }
+
 
 #[cfg(test)]
 mod tests {
@@ -141,43 +204,76 @@ mod tests {
     #[test]
     fn test_fork_by_namespace() {
         let input = "ui:click=\"btn1\"; db:host=\"localhost\"; ui:theme=\"dark\"; log:level=\"info\"";
-        let channels = vec!["ui", "db", "log"];
-        let result = fork_by_namespace(input, &channels);
+        let result = fork_by_namespace(input, &["ui", "db", "log"]);
         
-        assert_eq!(result.len(), 3);
-        assert!(result["ui"].contains("ui:click=\"btn1\""));
-        assert!(result["ui"].contains("ui:theme=\"dark\""));
-        assert!(result["db"].contains("db:host=\"localhost\""));
-        assert!(result["log"].contains("log:level=\"info\""));
+        assert!(result.contains("ui: ui:click=\"btn1\"; ui:theme=\"dark\""));
+        assert!(result.contains("db: db:host=\"localhost\""));
+        assert!(result.contains("log: log:level=\"info\""));
     }
 
     #[test] 
     fn test_fork_macro() {
         let input = "ui:click=\"btn1\"; db:host=\"localhost\"; log:level=\"info\"";
-        let (ui, db, log) = fork!(input, "ui", "db", "log");
+        let result = fork!(input, "ui", "db", "log");
         
-        assert!(ui.contains("ui:click=\"btn1\""));
-        assert!(db.contains("db:host=\"localhost\""));
-        assert!(log.contains("log:level=\"info\""));
+        assert!(result.contains_key("ui"));
+        assert!(result.contains_key("db"));
+        assert!(result.contains_key("log"));
+        assert!(result["ui"].contains("ui:click=\"btn1\""));
+        assert!(result["db"].contains("db:host=\"localhost\""));
     }
 
     #[test]
     fn test_fork_all() {
         let input = "ui:click=\"btn1\"; db:host=\"localhost\"; log:level=\"info\"";
-        let channels = fork_all!(input);
+        let result = fork_all!(input);
         
-        assert!(channels.contains_key("ui"));
-        assert!(channels.contains_key("db"));
-        assert!(channels.contains_key("log"));
+        assert!(result.contains_key("ui"));
+        assert!(result.contains_key("db"));
+        assert!(result.contains_key("log"));
     }
 
     #[test]
     fn test_fork_pattern() {
         let input = "api1:endpoint=\"/users\"; api2:endpoint=\"/posts\"; db:host=\"localhost\"";
-        let apis = fork_pattern!(input, r"api\d+");
+        let result = fork_pattern!(input, r"api\\d+");
         
-        assert!(apis.contains_key("api1"));
-        assert!(apis.contains_key("api2"));
-        assert!(!apis.contains_key("db"));
+        assert!(result.contains_key("api1"));
+        assert!(result.contains_key("api2"));
+        assert!(!result.contains_key("db"));
+    }
+    
+    #[test]
+    fn test_real_fork_with_streamable() {
+        let input = "ui:click=\"btn1\"; db:host=\"localhost\"; ui:theme=\"dark\"".to_string();
+        
+        // Fork using Streamable trait
+        let forked = input.stream_apply(Fork, vec!["ui".to_string(), "db".to_string()]);
+        
+        // Verify fork splits by namespace
+        assert!(forked.contains("ui: ui:click=\"btn1\"; ui:theme=\"dark\""));
+        assert!(forked.contains("db: db:host=\"localhost\""));
+    }
+    
+    #[test]
+    fn test_fork_all_streamable() {
+        let input = "ui:click=\"btn1\"; db:host=\"localhost\"; log:level=\"info\"".to_string();
+        
+        let result = input.stream_apply(ForkAll, ());
+        
+        assert!(result.contains("ui:"));
+        assert!(result.contains("db:"));
+        assert!(result.contains("log:"));
+    }
+    
+    #[test]
+    fn test_fork_pattern_streamable() {
+        let input = "api1:endpoint=\"/users\"; api2:endpoint=\"/posts\"; db:host=\"localhost\"".to_string();
+        
+        let result = input.stream_apply(ForkPattern, r"api\\d+".to_string());
+        
+        assert!(result.contains("api1:"));
+        assert!(result.contains("api2:"));
+        assert!(!result.contains("db:"));
     }
 }

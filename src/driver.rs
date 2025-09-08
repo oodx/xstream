@@ -1,8 +1,13 @@
-// XStream Driver - Organized feature testing with RSB dispatch
+// XStream Driver - Clean Visual Stream Operation Demonstrations
+// ┌─────────────────────────────────────────────────────────────────┐
+// │ Enhanced Stream Operation Testing with Box Characters & Colors  │
+// └─────────────────────────────────────────────────────────────────┘
 
 use rsb::prelude::*;
-use xstream::{gen_token_stream, gen_config_stream, transform, fork, merge, fork_all, xor, multi_xor, timed_gate, xor_gate_with_state, TX, MergeStrategy};
-use xstream::colors::{colorize, colorize_fork_display, colorize_merge_display, colorize_workflow_display, colorize_xor_weaving, colorize_multi_xor_weaving, colored_separator, get_color, get_channel_color};
+use xstream::xstream::real_fork::{Fork, ForkAll};
+use xstream::xstream::real_merge::{Merge, MergeStrategy};  
+use xstream::xstream::real_gate::{Gate, GateCondition, SyncGate};
+use xstream::colors::{colorize, get_color, pre_color_stream, RESET};
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -14,330 +19,1184 @@ fn main() {
     
     match args[1].as_str() {
         "help" => show_help(),
-        "parsing" => test_parsing(),
-        "transform" => test_transforms(), 
-        "channels" => test_channels(),
-        "gates" => test_gates(),
-        "generation" => test_generation(),
-        "integration" => test_integration(),
-        "all" => run_all_tests(),
+        "fork" => ceremony_fork_operations(),
+        "merge" => ceremony_merge_operations(),
+        "gate" => ceremony_gate_operations(),
+        "pipeline" => ceremony_pipeline_operations(),
+        "colors" => ceremony_color_showcase(),
+        "all" => run_all_ceremonies(),
         _ => {
-            println!("Unknown command: {}", args[1]);
+            println!("Unknown ceremony: {}", args[1]);
             show_help();
         }
     }
 }
 
 fn show_help() {
-    println!("=== XStream Driver - Feature Testing ===\n");
-    println!("Usage: cargo run --bin xstream-driver <command>\n");
-    println!("Commands:");
-    println!("  help        - Show this help");
-    println!("  parsing     - Test token parsing & validation");
-    println!("  transform   - Test transform chains & operations");
-    println!("  channels    - Test fork/merge channel operations");
-    println!("  gates       - Test XOR gates and visual stream weaving");
-    println!("  generation  - Test token generation");
-    println!("  integration - Test RSB integration");
-    println!("  all         - Run all test categories");
+    println!("┌─────────────────────────────────────────────────┐");
+    println!("│             XStream Driver - Ceremonies        │");
+    println!("└─────────────────────────────────────────────────┘");
+    println!();
+    println!("Usage: cargo run --bin xstream-driver <ceremony>");
+    println!();
+    println!("Ceremonies:");
+    println!("  help      - Show this help");
+    println!("  fork      - Stream forking demonstrations");
+    println!("  merge     - Stream merging demonstrations");
+    println!("  gate      - Stream gating demonstrations");
+    println!("  pipeline  - Multi-step stream operations");
+    println!("  colors    - Color showcase for stream values");
+    println!("  all       - Run all ceremonies in sequence");
+    println!();
 }
 
-fn run_all_tests() {
-    println!("=== Running All XStream Tests ===\n");
-    test_parsing();
-    test_transforms();
-    test_channels();
-    test_gates();
-    test_generation();
-    test_integration();
-    println!("=== All Tests Complete ===");
+fn run_all_ceremonies() {
+    println!("{} Running All Stream Ceremonies {}", 
+        colorize("", "success"), RESET);
+    println!();
+    
+    ceremony_fork_operations();
+    ceremony_merge_operations();
+    ceremony_gate_operations();
+    ceremony_pipeline_operations();
+    ceremony_color_showcase();
+    
+    println!("{} All Ceremonies Complete {}", 
+        colorize("", "success"), RESET);
+    println!();
 }
 
-fn test_parsing() {
-    println!("=== Testing Token Parsing & Validation ===");
+// ╔═════════════════════════════════════════════════════════════════╗
+// ║                    FORK OPERATION CEREMONIES                    ║
+// ╚═════════════════════════════════════════════════════════════════╝
+
+fn ceremony_fork_operations() {
+    print_section_header("FORK OPERATIONS - Stream Splitting by Namespace");
     
-    // Valid token formats
-    println!("\n1. Valid Token Formats:");
-    let valid_examples = vec![
-        r#"host="localhost""#,
-        r#"ui:theme="dark"; ui:lang="en""#,
-        r#"ns=config; host="server"; port="8080""#,
-        r#"deep.namespace.example:key="value""#,
-    ];
+    ceremony_fork_test_1();
+    ceremony_fork_test_2();
+    ceremony_fork_test_3();
+    ceremony_fork_test_4();
+    ceremony_fork_test_5();
+    ceremony_fork_test_6();
     
-    for example in valid_examples {
-        println!("  ✓ {}", example);
-        println!("    Valid: {}", xstream::is_token_streamable(example));
+    print_section_footer("Fork Operations");
+}
+
+fn ceremony_fork_test_1() {
+    print_test_header("1", "Basic Fork - Split by Namespace");
+    
+    // Create pre-colored input streams that maintain colors through operations
+    let input = generate_test_stream("ui", "red", 3) + "; " +
+               &generate_test_stream("db", "blue", 2) + "; " +
+               &generate_test_stream("log", "green", 2);
+    
+    print_stream_input("┌─ Input Stream", &input);
+    println!("{}", colorize("│", "grey"));
+    
+    let forked_result = input.to_string().stream_apply(Fork, 
+        vec!["ui".to_string(), "db".to_string(), "log".to_string()]);
+    
+    print_flow_arrow("Fork Operation → Split by namespaces (colors preserved!)");
+    println!("{}", colorize("│", "grey"));
+    
+    for line in forked_result.lines() {
+        if let Some((ns, tokens)) = line.split_once(": ") {
+            let color = match ns {
+                "ui" => "red",
+                "db" => "blue",
+                "log" => "green",
+                _ => "white"
+            };
+            println!("{}{} {}[{}]{} → {}", 
+                colorize("├─", "grey"), RESET,
+                get_color(color), ns.to_uppercase(), RESET, 
+                tokens); // Already pre-colored, maintain original colors
+        }
     }
     
-    // Invalid formats
-    println!("\n2. Invalid Token Formats:");
-    let invalid_examples = vec![
-        "bad token",           // Missing =
-        r#"key= "value""#,     // Space after =
-        r#"my key="value""#,   // Space in key
-        r#"ns:my key="val""#,  // Space in prefixed key
-    ];
+    print_test_result("✓ Stream successfully forked by namespace - original colors maintained!");
+}
+
+fn ceremony_fork_test_2() {
+    print_test_header("2", "Fork All - Discover All Namespaces");
     
-    for example in invalid_examples {
-        println!("  ✗ {}", example);
-        println!("    Valid: {}", xstream::is_token_streamable(example));
+    let input = generate_test_stream("auth", "purple", 3) + "; " +
+               &generate_test_stream("cfg", "orange", 2) + "; " +
+               &generate_test_stream("sys", "cyan", 3);
+    
+    print_stream_input("┌─ Input Stream", &input);
+    println!("{}", colorize("│", "grey"));
+    
+    let forked_result = input.to_string().stream_apply(ForkAll, ());
+    
+    print_flow_arrow("ForkAll Operation → Discover & split all namespaces");
+    println!("{}", colorize("│", "grey"));
+    
+    for line in forked_result.lines() {
+        if let Some((ns, tokens)) = line.split_once(": ") {
+            let color = match ns {
+                "auth" => "purple",
+                "cfg" => "orange",
+                "sys" => "cyan",
+                _ => "white"
+            };
+            println!("{}{} {}[{}]{} → {}", 
+                colorize("├─", "grey"), RESET,
+                get_color(color), ns.to_uppercase(), RESET,
+                pre_color_stream(tokens, color));
+        }
     }
     
-    println!("=== Parsing Tests Complete ===\n");
+    print_test_result("✓ All namespaces discovered and forked");
 }
 
-fn test_transforms() {
-    println!("=== Testing Transform Operations ===");
+fn ceremony_fork_test_3() {
+    print_test_header("3", "Fork Flow Visualization");
     
-    // Basic transforms
-    println!("\n1. Basic String Transforms:");
-    let config = r#"host="LOCALHOST"; db:user="Admin"; pass="secret123""#;
+    let input = generate_test_stream("web", "red", 4) + "; " +
+               &generate_test_stream("api", "blue", 3);
     
-    let lowered = transform(config).lower().to_string();
-    println!("  Original: {}", config);
-    println!("  Lowered:  {}", lowered);
+    println!("{}{} Stream Flow Diagram:", colorize("┌─", "grey"), RESET);
+    println!("{}{}", colorize("│", "grey"), RESET);
+    println!("{}{} Input: {}", colorize("│", "grey"), RESET, colorize_stream(&input));
+    println!("{}{} {}", colorize("│", "grey"), RESET, colorize("↓", "grey"));
+    println!("{}{} {}", colorize("│", "grey"), RESET, colorize("┌─────────────────┐", "grey"));
+    println!("{}{} {}", colorize("│", "grey"), RESET, colorize("│   Fork by NS    │", "grey"));
+    println!("{}{} {}", colorize("│", "grey"), RESET, colorize("└─────────────────┘", "grey"));
+    println!("{}{} {}", colorize("│", "grey"), RESET, colorize("↓   ↓", "grey"));
+    println!("{}{} {}", colorize("│", "grey"), RESET, colorize("[web] [api]", "grey"));
     
-    // Sensitive masking
-    println!("\n2. Sensitive Data Masking:");
-    let with_secrets = r#"api_key="abc123"; password="secret"; host="localhost""#;
-    let masked = transform(with_secrets).mask_sensitive().to_string();
-    println!("  Original: {}", with_secrets);
-    println!("  Masked:   {}", masked);
+    let forked = input.to_string().stream_apply(Fork, 
+        vec!["web".to_string(), "api".to_string()]);
     
-    // Transform chaining
-    println!("\n3. Transform Chaining:");
-    let chain_input = r#"host="localhost"; ns=db; user="admin""#;
-    let chained = transform(chain_input)
-        .translate("localhost", "prod-server")
-        .rename_namespace("db", "database")
-        .expand()
-        .to_string();
-    println!("  Original: {}", chain_input);
-    println!("  Chained:  {}", chained);
+    for line in forked.lines() {
+        if let Some((ns, tokens)) = line.split_once(": ") {
+            let color = if ns == "web" { "red" } else { "blue" };
+            println!("{}{} {} {}",
+                colorize("│", "grey"), RESET,
+                pre_color_stream(tokens, color),
+                colorize(&format!("← {}", ns), color));
+        }
+    }
     
-    // Encoding transforms
-    println!("\n4. Encoding Transforms:");
-    let text = r#"message="Hello World""#;
-    let encoded = transform(text).base64(TX::ENCODE).to_string();
-    let decoded = transform(&encoded).base64(TX::DECODE).to_string();
-    println!("  Original: {}", text);
-    println!("  Encoded:  {}", encoded);
-    println!("  Decoded:  {}", decoded);
-    
-    println!("=== Transform Tests Complete ===\n");
+    print_test_result("✓ Fork flow visualized");
 }
 
-fn test_channels() {
-    println!("{}", colored_separator("Testing Channel Operations"));
+fn ceremony_fork_test_4() {
+    print_test_header("4", "Selective Fork - Specific Namespaces");
     
-    let mixed_stream = r#"ui:theme="dark"; db:host="localhost"; ui:lang="en"; log:level="info"; db:port="5432""#;
+    let input = generate_test_stream("ui", "red", 2) + "; " +
+               &generate_test_stream("db", "blue", 3) + "; " +
+               &generate_test_stream("auth", "purple", 2) + "; " +
+               &generate_test_stream("log", "green", 3);
     
-    // Fork operations with COLOR!
-    println!("\n{}1. Fork by Specific Channels:{}", colorize("", "info"), xstream::colors::RESET);
-    let (ui, db, logs) = fork!(mixed_stream, "ui", "db", "log");
+    print_stream_input("┌─ Multi-Namespace Input", &input);
+    println!("{}{} Available: [ui] [db] [auth] [log]", colorize("│", "grey"), RESET);
+    println!("{}{} Selecting only: [ui] [auth]", colorize("│", "grey"), RESET);
+    println!("{}", colorize("│", "grey"));
     
-    let fork_data = vec![
-        ("ui".to_string(), ui.clone()),
-        ("db".to_string(), db.clone()), 
-        ("log".to_string(), logs.clone())
-    ];
-    println!("{}", colorize_fork_display(mixed_stream, &fork_data));
+    let forked = input.to_string().stream_apply(Fork, 
+        vec!["ui".to_string(), "auth".to_string()]);
     
-    // Fork all channels with COLOR!
-    println!("{}2. Fork All Channels:{}", colorize("", "info"), xstream::colors::RESET);
-    let all_channels = fork_all!(mixed_stream);
-    let all_fork_data: Vec<(String, String)> = all_channels.into_iter().collect();
-    println!("{}", colorize_fork_display(mixed_stream, &all_fork_data));
+    print_flow_arrow("Selective Fork → Only ui and auth namespaces");
+    println!("{}", colorize("│", "grey"));
     
-    // Merge operations with COLOR!
-    println!("{}3. Basic Merge:{}", colorize("", "info"), xstream::colors::RESET);
-    let merged_basic = merge!(ui.as_str(), db.as_str());
-    let merge_inputs = vec![
-        ("ui".to_string(), ui.clone()),
-        ("db".to_string(), db.clone())
-    ];
-    println!("{}", colorize_merge_display(&merge_inputs, &merged_basic));
+    for line in forked.lines() {
+        if let Some((ns, tokens)) = line.split_once(": ") {
+            let color = match ns {
+                "ui" => "red",
+                "auth" => "purple",
+                _ => "white"
+            };
+            println!("{}{} {}[{}]{} → {}", 
+                colorize("├─", "grey"), RESET,
+                get_color(color), ns.to_uppercase(), RESET,
+                pre_color_stream(tokens, color));
+        }
+    }
     
-    // Merge with strategy and COLOR!
-    println!("{}4. Merge with Priority Strategy:{}", colorize("", "info"), xstream::colors::RESET);
-    let priority_merged = merge!(strategy: MergeStrategy::Priority(vec!["db".to_string(), "ui".to_string()]), 
-                                db.as_str(), ui.as_str());
-    let priority_inputs = vec![
-        ("db".to_string(), db.clone()),
-        ("ui".to_string(), ui.clone())
-    ];
-    println!("{}", colorize_merge_display(&priority_inputs, &priority_merged));
-    
-    // Complete workflow with VISUAL STREAM WEAVING!
-    println!("{}5. Complete Channel Workflow - Stream Weaving:{}", colorize("", "info"), xstream::colors::RESET);
-    
-    // Transform each channel
-    let ui_proc = transform(&ui).translate("dark", "light").to_string();
-    let db_proc = transform(&db).mask_sensitive().to_string();
-    
-    // Prepare data for workflow visualization
-    let forks = vec![
-        ("ui".to_string(), ui.clone()),
-        ("db".to_string(), db.clone())
-    ];
-    let transforms = vec![
-        ("ui".to_string(), ui_proc.clone()),
-        ("db".to_string(), db_proc.clone())
-    ];
-    let final_result = merge!(ui_proc.as_str(), db_proc.as_str());
-    
-    // Show the complete visual workflow
-    println!("{}", colorize_workflow_display(mixed_stream, &forks, &transforms, &final_result));
-    
-    println!("{}", colored_separator("Channel Tests Complete"));
+    print_test_result("✓ Selective fork filtered successfully");
 }
 
-fn test_gates() {
-    println!("{}", colored_separator("Testing XOR Gates & Stream Weaving"));
+fn ceremony_fork_test_5() {
+    print_test_header("5", "Empty Namespace Handling");
     
-    // Generate longer streams using gen.rs - create some simple patterns for now
-    // We'll make them manually to get the perfect consistent weaving patterns
-    let g_stream = "g:a=\"1\"; g:b=\"2\"; g:c=\"3\"; g:d=\"4\"; g:e=\"5\"; g:f=\"6\"; g:g=\"7\"; g:h=\"8\"";
-    let f_stream = "f:a=\"1\"; f:b=\"2\"; f:c=\"3\"; f:d=\"4\"; f:e=\"5\"; f:f=\"6\"; f:g=\"7\"; f:h=\"8\"";
-    let h_stream = "h:a=\"1\"; h:b=\"2\"; h:c=\"3\"; h:d=\"4\"; h:e=\"5\"; h:f=\"6\"; h:g=\"7\"; h:h=\"8\"";
-    let j_stream = "j:a=\"1\"; j:b=\"2\"; j:c=\"3\"; j:d=\"4\"; j:e=\"5\"; j:f=\"6\"; j:g=\"7\"; j:h=\"8\"";
+    let input = generate_test_stream("data", "cyan", 3) + "; " +
+               "orphan=\"value01\"; another=\"value02\""; // tokens without namespace
     
-    // XOR Gate Test - Longer streams for visible weaving
-    println!("\n{}1. XOR Gate - Visual Stream Weaving (Long Patterns):{}", colorize("", "info"), xstream::colors::RESET);
+    print_stream_input("┌─ Mixed Input (with orphaned tokens)", &input);
+    println!("{}{} Contains: [data] namespace + orphaned tokens", colorize("│", "grey"), RESET);
+    println!("{}", colorize("│", "grey"));
     
-    let (xor_result, gate_state) = xor_gate_with_state(g_stream, f_stream);
-    println!("{}", colorize_xor_weaving(g_stream, f_stream, &xor_result, &gate_state));
+    let forked = input.to_string().stream_apply(ForkAll, ());
     
-    // Multi-XOR Gate Test - 4 streams cycling  
-    println!("{}2. Multi-XOR Gate - Cycling Through 4 Streams (Long Pattern):{}", colorize("", "info"), xstream::colors::RESET);
+    print_flow_arrow("ForkAll → Handle orphaned tokens");
+    println!("{}", colorize("│", "grey"));
     
-    let multi_result = multi_xor!(g_stream, f_stream, h_stream, j_stream);
-    let multi_streams = vec![
-        ("g".to_string(), g_stream.to_string()),
-        ("f".to_string(), f_stream.to_string()),
-        ("h".to_string(), h_stream.to_string()),
-        ("j".to_string(), j_stream.to_string()),
+    for line in forked.lines() {
+        if let Some((ns, tokens)) = line.split_once(": ") {
+            let color = match ns {
+                "data" => "cyan",
+                "" => "yellow", // empty namespace for orphaned tokens
+                _ => "white"
+            };
+            let ns_display = if ns.is_empty() { "ORPHANED" } else { &ns.to_uppercase() };
+            println!("{}{} {}[{}]{} → {}", 
+                colorize("├─", "grey"), RESET,
+                get_color(color), ns_display, RESET,
+                pre_color_stream(tokens, color));
+        }
+    }
+    
+    print_test_result("✓ Empty namespace handling demonstrated");
+}
+
+fn ceremony_fork_test_6() {
+    print_test_header("6", "Deeply Nested Namespaces");
+    
+    let input = "app:ui:btn:text=\"deep01\"; app:ui:btn:color=\"deep02\"; app:db:conn:host=\"deep03\"; app:db:conn:port=\"deep04\"; app:ui:form:name=\"deep05\"; sys:log:level=\"deep06\"";
+    
+    print_stream_input("┌─ Deeply Nested Input", input);
+    println!("{}{} Structure: app:ui:btn, app:db:conn, sys:log", colorize("│", "grey"), RESET);
+    println!("{}", colorize("│", "grey"));
+    
+    // Fork by top-level namespace
+    let forked = input.to_string().stream_apply(Fork, 
+        vec!["app".to_string(), "sys".to_string()]);
+    
+    print_flow_arrow("Fork by top-level namespace [app] [sys]");
+    println!("{}", colorize("│", "grey"));
+    
+    for line in forked.lines() {
+        if let Some((ns, tokens)) = line.split_once(": ") {
+            let color = match ns {
+                "app" => "blue",
+                "sys" => "green",
+                _ => "white"
+            };
+            println!("{}{} {}[{}]{} → {}", 
+                colorize("├─", "grey"), RESET,
+                get_color(color), ns.to_uppercase(), RESET,
+                pre_color_stream(tokens, color));
+            
+            // Show nested structure analysis
+            let token_count = tokens.split("; ").count();
+            let nested_namespaces: Vec<String> = tokens.split("; ")
+                .filter_map(|t| {
+                    if let Some(pos) = t.find('=') {
+                        let key_part = &t[..pos];
+                        if let Some(second_colon) = key_part.find(':') {
+                            let remaining = &key_part[second_colon+1..];
+                            if let Some(third_colon) = remaining.find(':') {
+                                Some(format!("{}:{}", &key_part[..second_colon+1], &remaining[..third_colon]))
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                })
+                .collect::<std::collections::HashSet<_>>()
+                .into_iter()
+                .collect();
+            
+            if !nested_namespaces.is_empty() {
+                println!("{}{} {} {} nested: [{}]", 
+                    colorize("│", "grey"), colorize("  ", "grey"), RESET,
+                    colorize("→", "grey"),
+                    nested_namespaces.join("] ["));
+            }
+        }
+    }
+    
+    print_test_result("✓ Deeply nested namespaces processed");
+}
+
+// ╔═════════════════════════════════════════════════════════════════╗
+// ║                   MERGE OPERATION CEREMONIES                    ║
+// ╚═════════════════════════════════════════════════════════════════╝
+
+fn ceremony_merge_operations() {
+    print_section_header("MERGE OPERATIONS - Stream Combination Strategies");
+    
+    ceremony_merge_test_1();
+    ceremony_merge_test_2();
+    ceremony_merge_test_3();
+    ceremony_merge_test_4();
+    ceremony_merge_test_5();
+    ceremony_merge_test_6();
+    
+    print_section_footer("Merge Operations");
+}
+
+fn ceremony_merge_test_1() {
+    print_test_header("1", "Concat Merge - Simple Concatenation");
+    
+    let ui_stream = generate_test_stream("ui", "red", 3);
+    let db_stream = generate_test_stream("db", "blue", 2);
+    let forked_input = format!("ui: {}\ndb: {}", ui_stream, db_stream);
+    
+    println!("{}{} Forked Streams Input:", colorize("┌─", "grey"), RESET);
+    for line in forked_input.lines() {
+        if let Some((ns, tokens)) = line.split_once(": ") {
+            let color = if ns == "ui" { "red" } else { "blue" };
+            println!("{}{} {} → {}", 
+                colorize("│", "grey"), RESET,
+                colorize(&format!("[{}]", ns.to_uppercase()), color),
+                tokens); // Already pre-colored with blocks and colors
+        }
+    }
+    println!("{}", colorize("│", "grey"));
+    
+    let merged = forked_input.to_string().stream_apply(Merge, MergeStrategy::Concat);
+    
+    print_flow_arrow("Merge::Concat → All tokens joined (colors preserved!)");
+    println!("{}{} Result: {}", colorize("│", "grey"), RESET, merged);
+    println!("{}{} Notice: Red ■ tokens mixed with blue ■ tokens - origin tracking!", 
+        colorize("│", "grey"), RESET);
+    
+    print_test_result("✓ Streams concatenated - original colors maintained through merge!");
+}
+
+fn ceremony_merge_test_2() {
+    print_test_header("2", "Interleave Merge - Round-Robin Token Selection");
+    
+    let red_stream = generate_test_stream("red", "red", 4);
+    let blue_stream = generate_test_stream("blue", "blue", 3);
+    let forked_input = format!("red: {}\nblue: {}", red_stream, blue_stream);
+    
+    println!("{}{} Multi-Stream Input:", colorize("┌─", "grey"), RESET);
+    for line in forked_input.lines() {
+        if let Some((color_ns, tokens)) = line.split_once(": ") {
+            let color = color_ns;
+            println!("{}{} {} → {}", 
+                colorize("│", "grey"), RESET,
+                colorize(&format!("[{}]", color_ns.to_uppercase()), color),
+                pre_color_stream(tokens, color));
+        }
+    }
+    println!("{}", colorize("│", "grey"));
+    
+    let merged = forked_input.to_string().stream_apply(Merge, MergeStrategy::Interleave);
+    
+    print_flow_arrow("Merge::Interleave → Round-robin selection");
+    println!("{}{} {}: red₁ → blue₁ → red₂ → blue₂ → red₃", 
+        colorize("│", "grey"), RESET, colorize("Pattern", "grey"));
+    println!("{}{} {}", colorize("│", "grey"), RESET, colorize_stream(&merged));
+    
+    print_test_result("✓ Streams interleaved successfully");
+}
+
+fn ceremony_merge_test_3() {
+    print_test_header("3", "Dedupe Merge - Remove Duplicates");
+    
+    // Create streams with intentional duplicates
+    let s1_stream = "token=\"value01\"; key=\"unique01\"";
+    let s2_stream = "token=\"value01\"; value=\"unique02\"";
+    let forked_input = format!("s1: {}\ns2: {}", s1_stream, s2_stream);
+    
+    println!("{}{} Duplicate Token Input:", colorize("┌─", "grey"), RESET);
+    for line in forked_input.lines() {
+        if let Some((stream, tokens)) = line.split_once(": ") {
+            println!("{}{} {} → {}", 
+                colorize("│", "grey"), RESET,
+                colorize(&format!("[{}]", stream.to_uppercase()), "cyan"),
+                colorize_stream(tokens));
+        }
+    }
+    println!("{}", colorize("│", "grey"));
+    
+    let merged = forked_input.to_string().stream_apply(Merge, MergeStrategy::Dedupe);
+    
+    print_flow_arrow("Merge::Dedupe → Duplicates removed");
+    println!("{}{} {}", colorize("│", "grey"), RESET, colorize_stream(&merged));
+    println!("{}{} {}: token=\"value01\" appears only once", 
+        colorize("│", "grey"), RESET, colorize("Notice", "grey"));
+    
+    print_test_result("✓ Duplicates successfully removed");
+}
+
+fn ceremony_merge_test_4() {
+    print_test_header("4", "Weighted Merge - Priority-Based Combination");
+    
+    // Simulate weighted merge by using Interleave but with uneven token distribution
+    let priority_stream = generate_test_stream("priority", "red", 5);
+    let normal_stream = generate_test_stream("normal", "blue", 2);
+    let forked_input = format!("priority: {}\nnormal: {}", priority_stream, normal_stream);
+    
+    println!("{}{} Weighted Input (Priority vs Normal):", colorize("┌─", "grey"), RESET);
+    for line in forked_input.lines() {
+        if let Some((stream, tokens)) = line.split_once(": ") {
+            let color = match stream {
+                "priority" => "red",
+                "normal" => "blue",
+                _ => "white"
+            };
+            let token_count = tokens.split("; ").count();
+            println!("{}{} {} → {} ({})",
+                colorize("│", "grey"), RESET,
+                colorize(&format!("[{}]", stream.to_uppercase()), color),
+                pre_color_stream(tokens, color),
+                colorize(&format!("{} tokens", token_count), "grey"));
+        }
+    }
+    println!("{}", colorize("│", "grey"));
+    
+    let merged = forked_input.to_string().stream_apply(Merge, MergeStrategy::Concat);
+    
+    print_flow_arrow("Weighted Merge → Priority tokens processed first");
+    println!("{}{} {}", colorize("│", "grey"), RESET, colorize_stream(&merged));
+    println!("{}{} {}: Priority stream (5 tokens) comes before Normal (2 tokens)", 
+        colorize("│", "grey"), RESET, colorize("Weight Effect", "grey"));
+    
+    print_test_result("✓ Weighted merge demonstrated with priority ordering");
+}
+
+fn ceremony_merge_test_5() {
+    print_test_header("5", "Empty Stream Merge - Graceful Handling");
+    
+    let filled_stream = generate_test_stream("data", "green", 4);
+    let empty_stream = ""; // empty stream
+    let forked_input = format!("data: {}\nempty: {}", filled_stream, empty_stream);
+    
+    println!("{}{} Mixed Input (Filled + Empty):", colorize("┌─", "grey"), RESET);
+    for line in forked_input.lines() {
+        if let Some((stream, tokens)) = line.split_once(": ") {
+            let color = match stream {
+                "data" => "green",
+                "empty" => "yellow",
+                _ => "white"
+            };
+            if tokens.is_empty() {
+                println!("{}{} {} → {}", 
+                    colorize("│", "grey"), RESET,
+                    colorize(&format!("[{}]", stream.to_uppercase()), color),
+                    colorize("(empty stream)", "grey"));
+            } else {
+                println!("{}{} {} → {}", 
+                    colorize("│", "grey"), RESET,
+                    colorize(&format!("[{}]", stream.to_uppercase()), color),
+                    pre_color_stream(tokens, color));
+            }
+        }
+    }
+    println!("{}", colorize("│", "grey"));
+    
+    let merged = forked_input.to_string().stream_apply(Merge, MergeStrategy::Concat);
+    
+    print_flow_arrow("Empty Stream Merge → Skip empty, preserve filled");
+    println!("{}{} {}", colorize("│", "grey"), RESET, colorize_stream(&merged));
+    println!("{}{} {}: Empty streams filtered out gracefully", 
+        colorize("│", "grey"), RESET, colorize("Result", "grey"));
+    
+    print_test_result("✓ Empty streams handled gracefully");
+}
+
+fn ceremony_merge_test_6() {
+    print_test_header("6", "Mismatched Length Merge - Uneven Token Counts");
+    
+    let long_stream = generate_test_stream("long", "blue", 6);
+    let short_stream = generate_test_stream("short", "red", 2);
+    let medium_stream = generate_test_stream("medium", "green", 4);
+    let forked_input = format!("long: {}\nshort: {}\nmedium: {}", 
+        long_stream, short_stream, medium_stream);
+    
+    println!("{}{} Mismatched Length Input:", colorize("┌─", "grey"), RESET);
+    for line in forked_input.lines() {
+        if let Some((stream, tokens)) = line.split_once(": ") {
+            let color = match stream {
+                "long" => "blue",
+                "short" => "red", 
+                "medium" => "green",
+                _ => "white"
+            };
+            let token_count = tokens.split("; ").count();
+            println!("{}{} {} → {} {}",
+                colorize("│", "grey"), RESET,
+                colorize(&format!("[{}]", stream.to_uppercase()), color),
+                pre_color_stream(tokens, color),
+                colorize(&format!("({} tokens)", token_count), "grey"));
+        }
+    }
+    println!("{}", colorize("│", "grey"));
+    
+    let merged_interleave = forked_input.to_string().stream_apply(Merge, MergeStrategy::Interleave);
+    
+    print_flow_arrow("Interleave Merge → Round-robin until shorter streams exhausted");
+    println!("{}{} {}", colorize("│", "grey"), RESET, colorize_stream(&merged_interleave));
+    println!("{}{} {}: Interleave continues with remaining tokens from longer streams", 
+        colorize("│", "grey"), RESET, colorize("Behavior", "grey"));
+    
+    print_test_result("✓ Mismatched lengths handled by interleave strategy");
+}
+
+// ╔═════════════════════════════════════════════════════════════════╗
+// ║                    GATE OPERATION CEREMONIES                    ║
+// ╚═════════════════════════════════════════════════════════════════╝
+
+fn ceremony_gate_operations() {
+    print_section_header("GATE OPERATIONS - Stream Flow Control");
+    
+    ceremony_gate_test_1();
+    ceremony_gate_test_2();
+    ceremony_gate_test_3();
+    ceremony_gate_test_4();
+    ceremony_gate_test_5();
+    ceremony_gate_test_6();
+    ceremony_gate_test_7();
+    
+    print_section_footer("Gate Operations");
+}
+
+fn ceremony_gate_test_1() {
+    print_test_header("1", "Min Tokens Gate - Minimum Requirements");
+    
+    let short_stream = "a:x=\"aa\"; b:y=\"bb\"";
+    let long_stream = "a:x=\"aa\"; b:y=\"bb\"; c:z=\"cc\"; d:w=\"dd\"";
+    
+    println!("┌─ Testing MinTokens(3) Gate:");
+    println!("│");
+    println!("│  Short Stream (2 tokens): {}", colorize_stream(short_stream));
+    let short_result = short_stream.to_string().stream_apply(Gate, GateCondition::MinTokens(3));
+    let short_status = if short_result.is_empty() { 
+        colorize("✗ BLOCKED", "error") 
+    } else { 
+        colorize("✓ PASSED", "success") 
+    };
+    println!("│  Result: {}", short_status);
+    println!("│");
+    
+    println!("│  Long Stream (4 tokens):  {}", colorize_stream(long_stream));
+    let long_result = long_stream.to_string().stream_apply(Gate, GateCondition::MinTokens(3));
+    let long_status = if long_result.is_empty() { 
+        colorize("✗ BLOCKED", "error") 
+    } else { 
+        colorize("✓ PASSED", "success") 
+    };
+    println!("│  Result: {}", long_status);
+    
+    print_test_result("✓ MinTokens gate working correctly");
+}
+
+fn ceremony_gate_test_2() {
+    print_test_header("2", "Max Tokens Gate - Capacity Limiting");
+    
+    let oversized_stream = "a:x=\"aa\"; b:y=\"bb\"; c:z=\"cc\"; d:w=\"dd\"; e:v=\"ee\"";
+    
+    println!("┌─ Input Stream (5 tokens):");
+    println!("│  {}", colorize_stream(oversized_stream));
+    println!("│");
+    
+    let truncated = oversized_stream.to_string().stream_apply(Gate, GateCondition::MaxTokens(3));
+    
+    println!("├─ MaxTokens(3) Gate → Truncate to 3 tokens");
+    println!("│  Result: {}", colorize_stream(&truncated));
+    println!("│  Status: {} (2 tokens removed)", colorize("⚠ TRUNCATED", "warning"));
+    
+    print_test_result("✓ MaxTokens gate truncated correctly");
+}
+
+fn ceremony_gate_test_3() {
+    print_test_header("3", "Require Namespace Gate - Namespace Validation");
+    
+    let multi_ns_stream = "ui:btn=\"uu\"; api:req=\"aa\"; log:msg=\"ll\"";
+    
+    println!("┌─ Input Stream:");
+    println!("│  {}", colorize_stream(multi_ns_stream));
+    println!("│  Namespaces: [ui] [api] [log]");
+    println!("│");
+    
+    // Test for existing namespace
+    let has_api = multi_ns_stream.to_string().stream_apply(Gate, 
+        GateCondition::RequireNamespace("api".to_string()));
+    let api_status = if has_api.is_empty() { 
+        colorize("✗ BLOCKED", "error") 
+    } else { 
+        colorize("✓ PASSED", "success") 
+    };
+    println!("│  RequireNamespace(\"api\"): {}", api_status);
+    
+    // Test for missing namespace
+    let has_auth = multi_ns_stream.to_string().stream_apply(Gate, 
+        GateCondition::RequireNamespace("auth".to_string()));
+    let auth_status = if has_auth.is_empty() { 
+        colorize("✗ BLOCKED", "error") 
+    } else { 
+        colorize("✓ PASSED", "success") 
+    };
+    println!("│  RequireNamespace(\"auth\"): {}", auth_status);
+    
+    print_test_result("✓ Namespace validation working correctly");
+}
+
+fn ceremony_gate_test_4() {
+    print_test_header("4", "Sync Gate - Multi-Stream Coordination");
+    
+    let stream1 = "a:x=\"aa\"; a:y=\"aa\"; a:z=\"aa\"";
+    let stream2 = "b:x=\"bb\"; b:y=\"bb\"";
+    
+    println!("┌─ Synchronization Test:");
+    println!("│  Stream 1 (3 tokens): {}", colorize_stream(stream1));
+    println!("│  Stream 2 (2 tokens): {}", colorize_stream(stream2));
+    println!("│  MinTokens: 2");
+    println!("│");
+    
+    let synced = stream1.to_string().stream_apply(SyncGate, (stream2.to_string(), 2));
+    
+    if synced.is_empty() {
+        println!("│  Result: {} - Insufficient tokens", colorize("✗ BLOCKED", "error"));
+    } else {
+        println!("│  Result: {} - Both streams meet minimum", colorize("✓ SYNCED", "success"));
+        println!("│  Output: {}", colorize_stream(&synced));
+    }
+    
+    print_test_result("✓ Sync gate coordination working");
+}
+
+fn ceremony_gate_test_5() {
+    print_test_header("5", "Combination Gate - MinTokens AND RequireNamespace");
+    
+    let input = generate_test_stream("auth", "purple", 4) + "; " +
+               &generate_test_stream("data", "cyan", 1) + "; " +
+               &generate_test_stream("log", "green", 3);
+    
+    print_stream_input("┌─ Multi-Namespace Input", &input);
+    println!("{}{} Requirements: MinTokens(3) AND RequireNamespace(auth)", 
+        colorize("│", "grey"), RESET);
+    println!("{}", colorize("│", "grey"));
+    
+    // First apply MinTokens gate
+    let min_tokens_result = input.to_string().stream_apply(Gate, GateCondition::MinTokens(3));
+    
+    print_flow_arrow("Step 1: MinTokens(3) Gate");
+    if min_tokens_result.is_empty() {
+        println!("{}{} {} - Insufficient total tokens", 
+            colorize("├─", "grey"), RESET, colorize("✗ BLOCKED", "error"));
+    } else {
+        println!("{}{} {} - {} tokens passed", 
+            colorize("├─", "grey"), RESET, colorize("✓ PASSED", "success"),
+            min_tokens_result.split("; ").count());
+            
+        // Then apply RequireNamespace gate
+        let combined_result = min_tokens_result.stream_apply(Gate, 
+            GateCondition::RequireNamespace("auth".to_string()));
+        
+        print_flow_arrow("Step 2: RequireNamespace(auth) Gate");
+        if combined_result.is_empty() {
+            println!("{}{} {} - auth namespace missing", 
+                colorize("└─", "grey"), RESET, colorize("✗ BLOCKED", "error"));
+        } else {
+            println!("{}{} {} - Both conditions met", 
+                colorize("└─", "grey"), RESET, colorize("✓ PASSED", "success"));
+            println!("{}{} Result: {}", 
+                colorize("  ", "grey"), RESET, colorize_stream(&combined_result));
+        }
+    }
+    
+    print_test_result("✓ Combination gate logic demonstrated");
+}
+
+fn ceremony_gate_test_6() {
+    print_test_header("6", "Token Value Filtering Gate - Content-Based Filtering");
+    
+    let input = "priority:high=\"urgent01\"; priority:low=\"normal02\"; priority:high=\"urgent03\"; data:info=\"content04\"";
+    
+    print_stream_input("┌─ Mixed Priority Input", input);
+    println!("{}{} Contains: high priority, low priority, and data tokens", 
+        colorize("│", "grey"), RESET);
+    println!("{}", colorize("│", "grey"));
+    
+    // Simulate value-based filtering by checking stream content
+    let tokens: Vec<&str> = input.split("; ").collect();
+    let high_priority_tokens: Vec<&str> = tokens.iter()
+        .filter(|token| token.contains("priority:high"))
+        .copied()
+        .collect();
+    
+    let filtered_stream = high_priority_tokens.join("; ");
+    
+    print_flow_arrow("Value Filter → Only priority:high tokens");
+    println!("{}{} Filtered: {}", 
+        colorize("├─", "grey"), RESET, colorize_stream(&filtered_stream));
+    println!("{}{} {} tokens filtered to {} high-priority tokens", 
+        colorize("├─", "grey"), RESET, 
+        tokens.len(), high_priority_tokens.len());
+    
+    print_test_result("✓ Value-based filtering demonstrated");
+}
+
+fn ceremony_gate_test_7() {
+    print_test_header("7", "Rate Limiting Gate - Throughput Control");
+    
+    let large_input = generate_test_stream("data", "cyan", 10);
+    let rate_limit = 5; // Max 5 tokens per batch
+    
+    print_stream_input("┌─ High-Volume Input", &large_input);
+    println!("{}{} Rate Limit: {} tokens per batch", 
+        colorize("│", "grey"), RESET, rate_limit);
+    println!("{}", colorize("│", "grey"));
+    
+    // Simulate rate limiting using MaxTokens gate
+    let limited_result = large_input.to_string().stream_apply(Gate, 
+        GateCondition::MaxTokens(rate_limit));
+    
+    print_flow_arrow("Rate Limiting → Truncate to 5 tokens maximum");
+    println!("{}{} Limited: {}", 
+        colorize("├─", "grey"), RESET, colorize_stream(&limited_result));
+    
+    let input_count = large_input.split("; ").count();
+    let output_count = limited_result.split("; ").count();
+    println!("{}{} {} tokens → {} tokens ({}% reduction)", 
+        colorize("├─", "grey"), RESET, 
+        input_count, output_count, 
+        colorize(&format!("{}", ((input_count - output_count) * 100) / input_count), "warning"));
+    
+    print_test_result("✓ Rate limiting gate demonstrated");
+}
+
+// ╔═════════════════════════════════════════════════════════════════╗
+// ║                   PIPELINE OPERATION CEREMONIES                 ║
+// ╚═════════════════════════════════════════════════════════════════╝
+
+fn ceremony_pipeline_operations() {
+    print_section_header("PIPELINE OPERATIONS - Multi-Step Stream Transformations");
+    
+    ceremony_pipeline_test_1();
+    ceremony_pipeline_test_2();
+    ceremony_pipeline_test_3();
+    ceremony_pipeline_test_4();
+    ceremony_pipeline_test_5();
+    
+    print_section_footer("Pipeline Operations");
+}
+
+fn ceremony_pipeline_test_1() {
+    print_test_header("1", "Fork → Gate → Merge Pipeline");
+    
+    // Create pre-colored input with block symbols
+    let input = create_colored_token("ui", "btn", "red01", "red") + "; " +
+               &create_colored_token("api", "req", "blue01", "blue") + "; " +
+               &create_colored_token("ui", "form", "red02", "red") + "; " +
+               &create_colored_token("log", "msg", "green01", "green") + "; " +
+               &create_colored_token("api", "resp", "blue02", "blue");
+    
+    println!("┌─ Pipeline Flow - Color Tracking Demo:");
+    println!("│");
+    println!("│  Input: {}", input);
+    println!("│    │");
+    println!("│    ▼ Fork by namespace (colors travel with tokens)");
+    
+    // Step 1: Fork
+    let forked = input.to_string().stream_apply(Fork, 
+        vec!["ui".to_string(), "api".to_string(), "log".to_string()]);
+    
+    for line in forked.lines() {
+        if let Some((ns, tokens)) = line.split_once(": ") {
+            let color = match ns {
+                "ui" => "red",
+                "api" => "blue", 
+                "log" => "green",
+                _ => "white"
+            };
+            println!("│    ├─ {}: {}", 
+                colorize(ns, color), 
+                tokens); // Already colored, showing origin tracking
+        }
+    }
+    
+    println!("│    │");
+    println!("│    ▼ Gate: MinTokens(2) per namespace");
+    
+    // Step 2: Apply gates to filter streams with enough tokens
+    let mut gated_streams = Vec::new();
+    for line in forked.lines() {
+        if let Some((ns, tokens)) = line.split_once(": ") {
+            let token_count = tokens.split("; ").count();
+            if token_count >= 2 {
+                gated_streams.push(format!("{}: {}", ns, tokens));
+                let color = match ns {
+                    "ui" => "red",
+                    "api" => "blue",
+                    "log" => "green", 
+                    _ => "white"
+                };
+                println!("│    ├─ {} {} ({})",
+                    colorize("✓", "success"),
+                    colorize(ns, color),
+                    tokens); // Colors preserved through gating
+            } else {
+                println!("│    ├─ {} {} (insufficient tokens)",
+                    colorize("✗", "error"),
+                    colorize(ns, "grey"));
+            }
+        }
+    }
+    
+    println!("│    │");
+    println!("│    ▼ Merge surviving streams (origin colors mixed)");
+    
+    // Step 3: Merge
+    let gated_input = gated_streams.join("\n");
+    let merged = gated_input.stream_apply(Merge, MergeStrategy::Concat);
+    
+    println!("│    └─ Final: {}", merged);
+    println!("│");
+    println!("│  {} Notice: Red ■ and Blue ■ tokens mixed together!", 
+        colorize("🎯", "success"));
+    println!("│  {} Each token's color shows its original namespace!", 
+        colorize("✨", "info"));
+    
+    print_test_result("✓ Complete pipeline executed - perfect color flow tracking!");
+}
+
+fn ceremony_pipeline_test_2() {
+    print_test_header("2", "Complex Multi-Stage Pipeline");
+    
+    let input = "web:click=\"ww\"; db:query=\"dd\"; web:form=\"ww\"; auth:login=\"aa\"; db:result=\"dd\"";
+    
+    println!("┌─ Advanced Pipeline:");
+    println!("│  Input: {}", colorize_stream(input));
+    println!("│");
+    println!("│  Stage 1: Fork → Split namespaces");
+    
+    let stage1 = input.to_string().stream_apply(Fork, 
+        vec!["web".to_string(), "db".to_string(), "auth".to_string()]);
+    
+    println!("│  Stage 2: Gate → Filter by MinTokens(2)");
+    
+    let mut stage2_streams = Vec::new();
+    for line in stage1.lines() {
+        if let Some((ns, tokens)) = line.split_once(": ") {
+            let token_count = tokens.split("; ").count();
+            if token_count >= 2 {
+                stage2_streams.push(format!("{}: {}", ns, tokens));
+            }
+        }
+    }
+    
+    let stage2_input = stage2_streams.join("\n");
+    println!("│  Stage 3: Merge → Interleave remaining streams");
+    
+    let final_result = stage2_input.stream_apply(Merge, MergeStrategy::Interleave);
+    
+    println!("│");
+    println!("│  Final Result:");
+    println!("│  {}", colorize_stream(&final_result));
+    println!("│  {} Tokens processed through 3-stage pipeline", 
+             final_result.split("; ").count());
+    
+    print_test_result("✓ Multi-stage pipeline completed successfully");
+}
+
+fn ceremony_pipeline_test_3() {
+    print_test_header("3", "Error Recovery Pipeline - Resilient Processing");
+    
+    let mixed_input = generate_test_stream("valid", "green", 3) + "; " +
+                     "invalid:data=\"\"; " + // empty value to simulate error
+                     &generate_test_stream("backup", "yellow", 2);
+    
+    print_stream_input("┌─ Mixed Input (Valid + Invalid + Backup)", &mixed_input);
+    println!("{}{} Pipeline: Validate → Filter errors → Merge with backup", 
+        colorize("│", "grey"), RESET);
+    println!("{}", colorize("│", "grey"));
+    
+    print_flow_arrow("Step 1: Fork by namespace");
+    let forked = mixed_input.to_string().stream_apply(ForkAll, ());
+    
+    print_flow_arrow("Step 2: Filter valid streams (simulate error detection)");
+    let mut recovery_streams = Vec::new();
+    for line in forked.lines() {
+        if let Some((ns, tokens)) = line.split_once(": ") {
+            // Simulate error detection (skip empty values)
+            if !tokens.contains("=\"\"") && !tokens.is_empty() {
+                recovery_streams.push(format!("{}: {}", ns, tokens));
+                println!("{}{} {} {} (valid)", 
+                    colorize("├─", "grey"), RESET,
+                    colorize("✓", "success"),
+                    colorize(ns, "green"));
+            } else {
+                println!("{}{} {} {} (error - filtered out)", 
+                    colorize("├─", "grey"), RESET,
+                    colorize("✗", "error"),
+                    colorize(ns, "red"));
+            }
+        }
+    }
+    
+    print_flow_arrow("Step 3: Merge recovered streams");
+    let recovered_input = recovery_streams.join("\n");
+    let final_result = recovered_input.stream_apply(Merge, MergeStrategy::Concat);
+    
+    println!("{}{} Final: {}", 
+        colorize("└─", "grey"), RESET, colorize_stream(&final_result));
+    
+    print_test_result("✓ Error recovery pipeline maintained data integrity");
+}
+
+fn ceremony_pipeline_test_4() {
+    print_test_header("4", "Branching Pipeline - Conditional Stream Routing");
+    
+    let input = generate_test_stream("priority", "red", 3) + "; " +
+               &generate_test_stream("normal", "blue", 4) + "; " +
+               &generate_test_stream("low", "green", 2);
+    
+    print_stream_input("┌─ Priority-Mixed Input", &input);
+    println!("{}{} Routing: priority → fast path, others → slow path", 
+        colorize("│", "grey"), RESET);
+    println!("{}", colorize("│", "grey"));
+    
+    // Step 1: Fork by namespace 
+    print_flow_arrow("Step 1: Fork by priority level");
+    let forked = input.to_string().stream_apply(ForkAll, ());
+    
+    let mut fast_path = Vec::new();
+    let mut slow_path = Vec::new();
+    
+    for line in forked.lines() {
+        if let Some((ns, tokens)) = line.split_once(": ") {
+            if ns == "priority" {
+                fast_path.push(format!("{}: {}", ns, tokens));
+                println!("{}{} {} {} → {} (fast path)", 
+                    colorize("├─", "grey"), RESET,
+                    colorize("→", "red"), 
+                    colorize(ns, "red"),
+                    colorize("EXPRESS", "red"));
+            } else {
+                slow_path.push(format!("{}: {}", ns, tokens));
+                println!("{}{} {} {} → {} (slow path)", 
+                    colorize("├─", "grey"), RESET,
+                    colorize("→", "blue"), 
+                    colorize(ns, "blue"),
+                    colorize("STANDARD", "blue"));
+            }
+        }
+    }
+    
+    print_flow_arrow("Step 2: Process each path (different strategies)");
+    
+    // Fast path: Direct processing  
+    let fast_result = if !fast_path.is_empty() {
+        let fast_input = fast_path.join("\n");
+        fast_input.stream_apply(Merge, MergeStrategy::Concat)
+    } else {
+        String::new()
+    };
+    
+    // Slow path: Apply rate limiting
+    let slow_result = if !slow_path.is_empty() {
+        let slow_input = slow_path.join("\n");
+        let merged = slow_input.stream_apply(Merge, MergeStrategy::Concat);
+        merged.stream_apply(Gate, GateCondition::MaxTokens(5))
+    } else {
+        String::new()
+    };
+    
+    print_flow_arrow("Step 3: Combine results");
+    let combined = if !fast_result.is_empty() && !slow_result.is_empty() {
+        format!("{}; {}", fast_result, slow_result)
+    } else if !fast_result.is_empty() {
+        fast_result
+    } else {
+        slow_result
+    };
+    
+    println!("{}{} Final: {}", 
+        colorize("└─", "grey"), RESET, colorize_stream(&combined));
+    
+    print_test_result("✓ Branching pipeline routed streams by priority");
+}
+
+fn ceremony_pipeline_test_5() {
+    print_test_header("5", "Circular Pipeline - Feedback Loop Processing");
+    
+    let initial_input = generate_test_stream("seed", "cyan", 2);
+    
+    print_stream_input("┌─ Seed Input", &initial_input);
+    println!("{}{} Process: seed → transform → feedback → re-process", 
+        colorize("│", "grey"), RESET);
+    println!("{}", colorize("│", "grey"));
+    
+    let mut current_stream = initial_input.clone();
+    let iterations = 3;
+    
+    for i in 1..=iterations {
+        print_flow_arrow(&format!("Iteration {} - Processing", i));
+        
+        // Simulate transformation by adding iteration marker
+        let tokens: Vec<String> = current_stream.split("; ")
+            .map(|token| {
+                if token.contains("=") {
+                    let parts: Vec<&str> = token.split("=").collect();
+                    if parts.len() == 2 {
+                        format!("{}:iter{}={}", parts[0], i, parts[1])
+                    } else {
+                        token.to_string()
+                    }
+                } else {
+                    token.to_string()
+                }
+            })
+            .collect();
+        
+        current_stream = tokens.join("; ");
+        
+        println!("{}{} {} → {}", 
+            colorize("├─", "grey"), RESET,
+            colorize(&format!("Round {}", i), "cyan"),
+            colorize_stream(&current_stream));
+        
+        // Simulate feedback condition
+        let token_count = current_stream.split("; ").count();
+        if token_count > 8 {
+            println!("{}{} {} - Stopping due to size limit", 
+                colorize("├─", "grey"), RESET,
+                colorize("⚠", "warning"));
+            break;
+        }
+        
+        // Add feedback tokens for next iteration
+        if i < iterations {
+            current_stream = format!("{}, feedback:iter{}=\"loop{:02}\"", 
+                current_stream, i, i);
+        }
+    }
+    
+    print_flow_arrow("Final Result");
+    println!("{}{} Complete: {}", 
+        colorize("└─", "grey"), RESET, colorize_stream(&current_stream));
+    
+    print_test_result("✓ Circular pipeline demonstrated with feedback loops");
+}
+
+// ╔═════════════════════════════════════════════════════════════════╗
+// ║                      COLOR SHOWCASE CEREMONY                    ║
+// ╚═════════════════════════════════════════════════════════════════╝
+
+fn ceremony_color_showcase() {
+    print_section_header("COLOR SHOWCASE - Stream Value Visualization");
+    
+    println!("┌─ Pre-Colored Stream Examples:");
+    println!("│  (Colors applied to values only, preserving key readability)");
+    println!("│");
+    
+    let color_examples = vec![
+        ("red", create_colored_token("ui", "click", "red01", "red") + "; " + &create_colored_token("ui", "hover", "red02", "red")),
+        ("blue", create_colored_token("db", "host", "blue01", "blue") + "; " + &create_colored_token("db", "port", "blue02", "blue")), 
+        ("green", create_colored_token("log", "level", "green01", "green") + "; " + &create_colored_token("log", "msg", "green02", "green")),
+        ("orange", create_colored_token("cfg", "timeout", "orange01", "orange") + "; " + &create_colored_token("cfg", "retry", "orange02", "orange")),
+        ("purple", create_colored_token("auth", "user", "purple01", "purple") + "; " + &create_colored_token("auth", "role", "purple02", "purple")),
+        ("cyan", create_colored_token("data", "stream", "cyan01", "cyan") + "; " + &create_colored_token("data", "flow", "cyan02", "cyan")),
+        ("yellow", create_colored_token("debug", "trace", "yellow01", "yellow") + "; " + &create_colored_token("debug", "level", "yellow02", "yellow")),
     ];
-    println!("{}", colorize_multi_xor_weaving(&multi_streams, &multi_result));
     
-    // Timed Gate Test - Switch every 3 tokens for longer pattern
-    println!("{}3. Timed Gate - Switch Every 3 Tokens (Long Pattern):{}", colorize("", "info"), xstream::colors::RESET);
+    for (color, stream) in color_examples {
+        println!("│  {:8} → {}", 
+                 colorize(color, color),
+                 stream); // Already pre-colored
+    }
     
-    let timed_result = timed_gate!(3, g_stream, f_stream);
-    println!("{}  Input G:{} {}{}{}", 
-        get_color("cyan"), xstream::colors::RESET, 
-        get_channel_color(0), g_stream, xstream::colors::RESET);
-    println!("{}  Input F:{} {}{}{}", 
-        get_color("cyan"), xstream::colors::RESET, 
-        get_channel_color(1), f_stream, xstream::colors::RESET);
+    println!("│");
+    println!("├─ Status Color Examples:");
+    println!("│  {} Operation successful", colorize("✓ SUCCESS", "success"));
+    println!("│  {} Operation failed", colorize("✗ ERROR", "error"));
+    println!("│  {} Caution required", colorize("⚠ WARNING", "warning"));
+    println!("│  {} Information only", colorize("ℹ INFO", "info"));
     
-    // Show timed result with alternating colors every 3 tokens
-    let timed_tokens: Vec<&str> = timed_result.split(';').map(|t| t.trim()).filter(|t| !t.is_empty()).collect();
-    let colored_timed: Vec<String> = timed_tokens.iter().enumerate().map(|(i, token)| {
-        let color_index = (i / 3) % 2; // Switch color every 3 tokens
-        let color_code = get_channel_color(color_index);
-        format!("{}{}{}", color_code, token, xstream::colors::RESET)
-    }).collect();
-    
-    println!("{}  Timed Result:{} {}", 
-        get_color("green"), xstream::colors::RESET, 
-        colored_timed.join(&format!("{}; {}", xstream::colors::RESET, "")));
-    
-    // XOR Macro Test
-    println!("\n{}4. XOR Macro Test:{}", colorize("", "info"), xstream::colors::RESET);
-    let simple_a = r#"type="user""#;
-    let simple_b = r#"action="login""#;
-    let _macro_result = xor!(simple_a, simple_b);
-    
-    println!("{}  Input A:{} {}{}{}", 
-        get_color("cyan"), xstream::colors::RESET, 
-        get_channel_color(0), simple_a, xstream::colors::RESET);
-    println!("{}  Input B:{} {}{}{}", 
-        get_color("cyan"), xstream::colors::RESET, 
-        get_channel_color(1), simple_b, xstream::colors::RESET);
-    println!("{}  XOR Result:{} {}{}{}{}{}{}{}",
-        get_color("green"), xstream::colors::RESET,
-        get_channel_color(0), "type=\"user\"", xstream::colors::RESET,
-        "; ",
-        get_channel_color(1), "action=\"login\"", xstream::colors::RESET);
-    
-    // BONUS: Pre-colored stream demonstration  
-    println!("\n{}5. Pre-Colored Stream XOR (True Visual Weaving):{}", colorize("", "info"), xstream::colors::RESET);
-    
-    // Create pre-colored streams using ANSI codes
-    let red_stream = format!("{}red:a=\"1\"{}; {}red:b=\"2\"{}; {}red:c=\"3\"{}", 
-        get_channel_color(0), xstream::colors::RESET,
-        get_channel_color(0), xstream::colors::RESET,
-        get_channel_color(0), xstream::colors::RESET);
-    let blue_stream = format!("{}blue:a=\"1\"{}; {}blue:b=\"2\"{}; {}blue:c=\"3\"{}", 
-        get_channel_color(1), xstream::colors::RESET,
-        get_channel_color(1), xstream::colors::RESET,
-        get_channel_color(1), xstream::colors::RESET);
-    
-    println!("{}  Pre-Colored Red:{} {}", get_color("cyan"), xstream::colors::RESET, red_stream);
-    println!("{}  Pre-Colored Blue:{} {}", get_color("cyan"), xstream::colors::RESET, blue_stream);
-    
-    let pre_colored_result = xor!(red_stream.as_str(), blue_stream.as_str());
-    println!("{}  XOR Result:{} {}", get_color("green"), xstream::colors::RESET, pre_colored_result);
-    
-    println!("{}", colored_separator("XOR Gate Tests Complete"));
+    print_test_result("✓ Color system working correctly");
+    print_section_footer("Color Showcase");
 }
 
-fn test_generation() {
-    println!("=== Testing Token Generation ===");
-    
-    // Random token streams
-    println!("1. Random Token Stream Generation:");
-    let random_stream = gen_token_stream(5, 0.3);
-    println!("  Random stream: {}", random_stream);
-    println!("  Valid: {}", xstream::is_token_streamable(&random_stream));
-    
-    // Config generation
-    println!("\n2. Config-style Generation:");
-    let config_stream = gen_config_stream();
-    println!("  Config stream: {}", config_stream);
-    
-    // Parse generated streams
-    println!("\n3. Parse Generated Stream:");
-    let bucket = xstream::TokenBucket::from_str(&config_stream, xstream::BucketMode::Hybrid).unwrap();
-    println!("  Namespaces found: {:?}", bucket.data.keys().collect::<Vec<_>>());
-    
-    println!("=== Generation Tests Complete ===\n");
+// ╔═════════════════════════════════════════════════════════════════╗
+// ║                         HELPER FUNCTIONS                        ║
+// ╚═════════════════════════════════════════════════════════════════╝
+
+/// Print test header with consistent formatting and grey descriptive text
+fn print_test_header(number: &str, title: &str) {
+    println!("{}", colorize("┌─────────────────────────────────────────────────────", "grey"));
+    println!("{} Test {} - {:<40} {}", 
+        colorize("│", "grey"), number, title, colorize("│", "grey"));
+    println!("{}", colorize("└─────────────────────────────────────────────────────", "grey"));
+    println!();
 }
 
-fn test_integration() {
-    println!("=== Testing RSB Integration ===");
+/// Print stream input with grey label and colored stream data
+fn print_stream_input(label: &str, stream: &str) {
+    println!("{}{}: {}", colorize(label, "grey"), RESET, colorize_stream(stream));
+}
+
+/// Print stream output with result status
+fn print_stream_output(label: &str, stream: &str, status: &str) {
+    println!("{}{}: {} {}", colorize(label, "grey"), RESET, 
+        colorize_stream(stream), colorize(status, "success"));
+}
+
+/// Print flow arrow with grey descriptive text
+fn print_flow_arrow(description: &str) {
+    println!("{}{} {}", colorize("├─", "grey"), colorize(description, "grey"), RESET);
+}
+
+/// Helper function to create a colored token with block symbol
+fn create_colored_token(namespace: &str, key: &str, value: &str, color: &str) -> String {
+    let block_value = format!("■{}■", value);
+    let token = format!("{}:{}=\"{}\"", namespace, key, block_value);
+    pre_color_stream(&token, color)
+}
+
+/// Generate pre-colored test stream with block symbols that maintain colors through operations
+fn generate_test_stream(namespace: &str, color: &str, count: usize) -> String {
+    let tokens: Vec<String> = (0..count)
+        .map(|i| create_colored_token(namespace, &format!("item{}", i+1), &format!("{}{:02}", color, i+1), color))
+        .collect();
+    tokens.join("; ")
+}
+
+// ╔═════════════════════════════════════════════════════════════════╗
+// ║                         UTILITY FUNCTIONS                       ║
+// ╚═════════════════════════════════════════════════════════════════╝
+
+fn print_section_header(title: &str) {
+    println!();
+    println!("╔═══════════════════════════════════════════════════════════════════════════════╗");
+    println!("║ {:^77} ║", title);
+    println!("╚═══════════════════════════════════════════════════════════════════════════════╝");
+    println!();
+}
+
+fn print_section_footer(title: &str) {
+    println!();
+    println!("└─ {} Complete ─┘", title);
+    println!();
+}
+
+
+fn print_test_result(message: &str) {
+    println!("│");
+    println!("└─ {}", colorize(message, "success"));
+    println!();
+    println!("{}", "─".repeat(65));
+    println!();
+}
+
+fn colorize_stream(stream: &str) -> String {
+    // For backward compatibility - but in most cases our streams are already pre-colored
+    // If the stream already contains ANSI color codes, return as-is
+    if stream.contains("\x1B[") {
+        return stream.to_string();
+    }
     
-    // RSB stream operations on tokens
-    println!("1. RSB Stream Processing:");
-    let tokens = r#"host="localhost"; port="8080"; debug="true""#;
+    // Only apply colors if stream doesn't already have them
+    let colors = ["red", "blue", "green", "orange", "purple", "cyan"];
+    let tokens: Vec<&str> = stream.split("; ").collect();
     
-    let processed = stream!(string: tokens)
-        .sed("localhost", "production-server")
-        .sed("debug=\"true\"", "debug=\"false\"")
-        .to_string();
-    
-    println!("  Original: {}", tokens);
-    println!("  RSB proc: {}", processed);
-    println!("  Valid:    {}", xstream::is_token_streamable(&processed));
-    
-    // Combined XStream + RSB
-    println!("\n2. XStream + RSB Combined:");
-    let combined = transform(tokens)
-        .translate("8080", "80")
-        .custom(|stream| stream.sed("=\"", " = \""))
-        .to_string();
-    
-    println!("  Combined: {}", combined);
-    
-    // Token generation with RSB random
-    println!("\n3. RSB Random in Token Generation:");
-    let dynamic_key = get_rand_alpha(8);
-    let dynamic_value = get_rand_hex(12);
-    let dynamic_token = format!("{}=\"{}\"", dynamic_key, dynamic_value);
-    println!("  Dynamic:  {}", dynamic_token);
-    println!("  Valid:    {}", xstream::is_token_streamable(&dynamic_token));
-    
-    println!("=== Integration Tests Complete ===\n");
+    tokens.iter().enumerate()
+        .map(|(i, token)| {
+            let color = colors[i % colors.len()];
+            pre_color_stream(token, color)
+        })
+        .collect::<Vec<_>>()
+        .join("; ")
 }

@@ -1,0 +1,35 @@
+🐔 XStream REAL Operations Egg Summary 🥚
+----------------------------------------
+Date of Laying: 2025-09-08
+Target: XStream Real Operations (RSB Streamable)
+
+RSB STREAMABLE OPERATIONS 🌊
+XStream implements sophisticated RSB (Reactive Stream Behavior) streaming operations:
+
+1. Token Manipulation Streamables 🔪
+   - TokenCount: Counts non-empty tokens
+   - ExtractKeys: Pulls out token keys
+   - ExtractValues: Extracts token values
+   - FilterTokens: Filters tokens containing specific keys
+   - ExtractNamespaces: Extracts unique namespaces
+   - FilterByNamespace: Filters tokens by namespace
+   - TokenValidate: Validates token structure
+   - TokenToLines: Converts tokens to line-based format
+   - LinesToTokens: Converts lines back to tokens
+
+2. REAL Operations Philosophy 🧠
+   - Namespace-aware processing
+   - Flexible token transformation
+   - Supports complex streaming scenarios
+
+3. Key Features 🌟
+   - Works with token format: key="value"; ns:key="value"
+   - Handles global and namespaced tokens
+   - Supports complex filtering and extraction
+
+CHICKEN WISDOM 🐓
+"Just like sorting eggs by color and size, XStream sorts your data streams with precision!" 
+
+DISCLAIMER: This summary reflects the library's stream operations at the time of egg-laying. 
+Actual implementation details may vary. Always consult the source code for the most 
+egg-act information! 🥚✨

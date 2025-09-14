@@ -4,11 +4,11 @@
 //! Focuses on user ergonomics and common use cases.
 
 use rsb::prelude::*;
+use rsb::deps::serde_json;
 use crate::xstream::*;
 use crate::xstream::types::{TokenBucket, BucketMode, is_token_streamable};
 use crate::colors::{get_channel_color_name, pre_color_stream};
 use std::collections::HashMap;
-use serde_json;
 
 /// Error types for adapter operations
 #[derive(Debug, Clone)]

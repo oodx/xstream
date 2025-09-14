@@ -1,6 +1,7 @@
 // XStream Transform - Power chains for token stream transformations using RSB
 
 use rsb::prelude::*;
+use rsb::deps::{base64, urlencoding};
 use crate::xstream::types::{TokenBucket, BucketMode, is_token_streamable};
 // xsed now available from rsb::prelude via xcls module
 

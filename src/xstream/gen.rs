@@ -1,7 +1,7 @@
 // XStream Token Generator using RSB random capabilities
 
 use rsb::prelude::*;
-use rand::Rng;
+use rsb::deps::rand::{Rng};
 
 // Word lists for generating realistic tokens
 pub const PREFIXES: &[&str] = &[

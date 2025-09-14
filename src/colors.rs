@@ -15,29 +15,36 @@ pub const CHANNEL_COLORS: &[(&str, &str)] = &[
 ];
 
 /// Message colors for driver output
+#[cfg(feature = "rsb-visuals")]
+pub fn get_color(name: &str) -> &'static str {
+    rsb::visual::colors::get_color(name)
+}
+
+/// Message colors for driver output (local fallback)
+#[cfg(not(feature = "rsb-visuals"))]
 pub fn get_color(name: &str) -> &'static str {
     match name {
         // Your legacy stderr colors
         "red" => "\x1B[38;5;9m",
-        "red2" => "\x1B[38;5;197m", 
+        "red2" => "\x1B[38;5;197m",
         "magenta" => "\x1B[35m",
-        "blue" => "\x1B[36m", 
+        "blue" => "\x1B[36m",
         "blue2" => "\x1B[38;5;39m",
         "green" => "\x1B[38;5;10m",
         "orange" => "\x1B[38;5;214m",
         "purple" => "\x1B[38;5;213m",
         "purple2" => "\x1B[38;5;141m",
         "cyan" => "\x1B[38;5;14m",
-        "yellow" => "\x1B[38;5;220m", 
+        "yellow" => "\x1B[38;5;220m",
         "grey" => "\x1B[38;5;242m",
         "white" => "\x1B[38;5;247m",
-        
+
         // Common semantic colors
         "success" => "\x1B[38;5;46m",
-        "warning" => "\x1B[38;5;220m", 
+        "warning" => "\x1B[38;5;220m",
         "error" => "\x1B[38;5;196m",
         "info" => "\x1B[38;5;33m",
-        
+
         _ => "",
     }
 }
@@ -53,6 +60,12 @@ pub fn get_channel_color_name(index: usize) -> &'static str {
 }
 
 /// Colorize text with specified color
+#[cfg(feature = "rsb-visuals")]
+pub fn colorize(text: &str, color: &str) -> String {
+    rsb::visual::colors::colorize(text, color)
+}
+
+#[cfg(not(feature = "rsb-visuals"))]
 pub fn colorize(text: &str, color: &str) -> String {
     format!("{}{}{}", get_color(color), text, RESET)
 }

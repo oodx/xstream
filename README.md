@@ -179,6 +179,12 @@ let blue_db_token = create_colored_token("db", "host", "local01", "blue");
 // ui tokens remain red ■, db tokens remain blue ■
 ```
 
+### Optional Visuals via RSB
+- XStream can reuse RSB’s color helpers when the `rsb-visuals` feature is enabled.
+- When enabled, `xstream::colors::{get_color,colorize}` delegate to `rsb::visual::colors`.
+- When disabled (default), XStream uses a small, built-in color table with the same API.
+- Note: enabling `rsb-visuals` expects your `rsb` dependency to expose `visual::colors` via its own feature flags.
+
 ## 🧪 Stream Generation
 
 ### XStream Generator (`xstream-gen`)
@@ -663,10 +669,20 @@ This makes XStream excellent for:
 - **URL Encoding**: Safe string handling for web contexts  
 - **Regex**: Pattern matching for advanced stream operations
 
-## 📄 License
 
-XStream is built on the RSB framework. Please refer to the RSB repository for licensing terms and conditions.
+## License
 
----
+This package is part of the RSB / Oxidex / REBEL ecosystem, but its licensing is **limited**:
 
-**Ready to start streaming?** Begin with `cargo run --bin xstream-driver help` to explore the visual ceremonies and see XStream in action! 🎉
+| License | Who it’s for | Obligations |
+|---------|--------------|-------------|
+| [AGPL-3.0](./LICENSE) | Open-source projects that agree to release their own source under the AGPL. | Must comply with the AGPL for any distribution or network service. |
+| [Community Edition License](./docs/LICENSE_COMMUNITY.txt) | Personal, educational, or academic use **only**. Not for companies, organizations, or anyone acting for the benefit of a business. | Must meet all Community Edition eligibility requirements and follow its terms. |
+
+> ⚠️ **No commercial license is offered for this package.**  
+> Businesses and contractors may use it only under the AGPL (by releasing their derivative source) — it is not available for proprietary use.
+
+By downloading, installing, linking to, or otherwise using this package, you:
+
+1. Accept one of the licenses above, **and**  
+2. Represent that you meet all eligibility requirements for the license you have chosen.
